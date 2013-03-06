@@ -8,6 +8,7 @@ config = Configuration()
 config.section_("Services")
 config.Services.PanDAurl = 'https://pandaserver.cern.ch:8888'
 config.Services.PhEDExurl = 'https://phedex.cern.ch'
+config.Services.DBSUrl = 'https://cmsweb.cern.ch/dbs/dev/global/DBSReader'
 
 config.section_("TaskWorker")
 config.TaskWorker.polling = 60 #seconds

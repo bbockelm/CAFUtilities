@@ -59,7 +59,12 @@ class MasterWorker(object):
             return []
         # now emulating this 
         from TaskWorker.Actions.Handler import handleResubmit, handleNewTask 
-        return [(handleNewTask, Task({'name':'testme'}), {'pippo': 1})]
+        return [(handleNewTask, Task({'name': 'testme', 'dataset':'/DYJetsToLL_M-50_TuneZ2Star_8TeV-madgraph-tarball/Summer12_DR53X-PU_S10_START53_V7A-v1/AODSIM',
+                                      'splitargs': {'halt_job_on_file_boundaries': False, 'lumis_per_job': 50, 'splitOnRun': False},
+                                      'splitalgo': 'LumiBased'}), None),
+                (handleNewTask, Task({'name': 'pippo', 'dataset':'/DYJetsToLL_M-50_TuneZ2Star_8TeV-madgraph-tarball/Summer12_DR53X-PU_S10_START53_V7A-v1/AODSIM',
+                                      'splitargs': {'halt_job_on_file_boundaries': False, 'lumis_per_job': 50, 'splitOnRun': False},
+                                      'splitalgo': 'LumiBased'}), None)]
 
     def algorithm(self):
         """I'm the intelligent guy taking care of getting the work

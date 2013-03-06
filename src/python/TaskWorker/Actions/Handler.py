@@ -34,7 +34,9 @@ class TaskHandler(object):
         """Performing the set of actions"""
         nextinput = args
         for work in self.getWorks():
-            nextinput = work.execute(self._task, nextinput)
+            output = work.execute(nextinput, task=self._task)
+            nextinput = output.result
+            ## here we handle potential errors from output.errors
         return nextinput
 
 
