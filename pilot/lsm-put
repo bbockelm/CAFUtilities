@@ -1,0 +1,44 @@
+#!/usr/bin/env bash
+
+# Wrapper script to check for Python2.6 installation needed for WMAgent
+
+CMSPYTHON=slc5_amd64_gcc434/external/python
+
+if [ -d $CMS_PATH/COMP ]; then
+    if [ -d $CMS_PATH/COMP/$CMSPYTHON ]; then
+	declare -a VERSIONS
+	VERSIONS=($(ls $CMS_PATH/COMP/$CMSPYTHON | grep 2.6))
+	N_PYTHON26=${#VERSIONS[*]}
+	if [ $N_PYTHON26 -lt 1 ]; then
+	    echo "ERROR: No Python2.6 installed in COMP area. It is broken!"
+	    exit 1
+	else
+	    VERSION=${VERSIONS[0]}
+	    echo "Python 2.6 found in $CMS_PATH/COMP/$CMSPYTHON/$VERSION";
+	    PYTHON26=$CMS_PATH/COMP/$CMSPYTHON/$VERSION
+	    # Initialize CMS Python 2.6
+	    source $CMS_PATH/COMP/$CMSPYTHON/$VERSION/etc/profile.d/init.sh
+	fi
+    else 
+	echo "ERROR: No Python releases found in COMP area - it's broken!"
+	exit 1
+    fi
+else
+    echo "ERROR: No COMP area found!"
+    exit 1  
+fi
+
+export PYTHONPATH=$PILOT_SOURCE:$PYTHONPATH
+
+# Check existence of WMCore package in $PILOT_SOURCE dir
+#echo "*********** Mancinelli: $PILOT_SOURCE/WMCore"
+
+if [ -d $PILOT_SOURCE/WMCore ]; then
+    echo "WMCore found in $PILOT_SOURCE/WMCore"
+else
+    echo "ERROR: WMCore not found in $PILOT_SOURCE!"
+fi
+
+# Invoke LSM script
+$PWD/CMSLocalSiteMover.py $@
+exit $?
