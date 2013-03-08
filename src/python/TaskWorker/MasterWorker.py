@@ -2,6 +2,11 @@ import time
 import logging
 import os
 
+#temporary
+#from TaskDB.Interface.Task.GetTasks import getReadyTasks
+#from TaskDB.Interface.Task.SetTasks import setReadyTasks
+#from WMCore.WMInit import WMInit
+
 from TaskWorker.DataObjects.Task import Task
 from TaskWorker.Worker import Worker
 from TaskWorker.WorkerExceptions import *
@@ -18,10 +23,20 @@ def validateConfig(config):
         return False, "Configuration problem: Task worker section is missing. "
     return True, 'Ok'
 
+def validateDbConfig(config):
+    """Verify that the input configuration contains all needed info
+
+    :arg WMCore.Configuration config: input configuration
+    :return bool, string: flag for validation result and a message."""
+    if getattr(config, 'CoreDatabase', None) is None:
+        return False, "Configuration problem: Core Database section is missing. "
+    return True, 'Ok'
+
+
 class MasterWorker(object):
     """I am the master of the TaskWorker"""
 
-    def __init__(self, config, quiet, debug):
+    def __init__(self, config, dbconfig, quiet, debug):
         """Initializer
 
         :arg WMCore.Configuration config: input configuration
@@ -43,6 +58,7 @@ class MasterWorker(object):
             return logger
         self.logger = getLogging(quiet, debug)
         self.config = config
+        self.dbconfig = dbconfig
         self.slaves = Worker(self.config, self.config.TaskWorker.nslaves)
         self.slaves.begin()
 
@@ -57,14 +73,24 @@ class MasterWorker(object):
         elif worklimit <= 0:
             self.logger.error('More work then slaves acquired. Unexpected behaviour.')
             return []
+        #wmInit = WMInit()
+        #(dialect, junk) = self.dbconfig.CoreDatabase.connectUrl.split(":", 1)
+        #wmInit.setDatabaseConnection(dbConfig=self.dbconfig.CoreDatabase.connectUrl, dialect=dialect)
+        #result = getReadyTasks()
+        #print result
+        #for task in result:
+            #setReadyTasks(task[0], 'queued', time.time())
+
         # now emulating this 
         from TaskWorker.Actions.Handler import handleResubmit, handleNewTask 
         return [(handleNewTask, Task({'name': 'testme', 'dataset':'/DYJetsToLL_M-50_TuneZ2Star_8TeV-madgraph-tarball/Summer12_DR53X-PU_S10_START53_V7A-v1/AODSIM',
                                       'splitargs': {'halt_job_on_file_boundaries': False, 'lumis_per_job': 50, 'splitOnRun': False},
-                                      'splitalgo': 'LumiBased'}), None),
+                                      'splitalgo': 'LumiBased', 'sitewhitelist': ['T2_CH_CERN', 'T1_US_FNAL'], 'siteblacklist': [],
+                                      'userdn': '/DC=ch/DC=cern/OU=Organic Units/OU=Users/CN=mcinquil/CN=660800/CN=Mattia Cinquilli', 'vo': 'cms', 'group': '', 'role': ''}), None),
                 (handleNewTask, Task({'name': 'pippo', 'dataset':'/DYJetsToLL_M-50_TuneZ2Star_8TeV-madgraph-tarball/Summer12_DR53X-PU_S10_START53_V7A-v1/AODSIM',
                                       'splitargs': {'halt_job_on_file_boundaries': False, 'lumis_per_job': 50, 'splitOnRun': False},
-                                      'splitalgo': 'LumiBased'}), None)]
+                                      'splitalgo': 'LumiBased', 'sitewhitelist': ['T2_CH_CERN', 'T1_US_FNAL'], 'siteblacklist': [],
+                                      'userdn': '/DC=ch/DC=cern/OU=Organic Units/OU=Users/CN=mcinquil/CN=660800/CN=Mattia Cinquilli', 'vo': 'cms', 'group': '', 'role': ''}), None)]
 
     def algorithm(self):
         """I'm the intelligent guy taking care of getting the work
@@ -108,18 +134,28 @@ if __name__ == '__main__':
                        metavar = "FILE",
                        help = "configuration file path" )
 
+    parser.add_option( "--db-config",
+                       dest = "dbconfig",
+                       default = None,
+                       metavar = "FILE",
+                       help = "database configuration file path" )
+
     (options, args) = parser.parse_args()
 
     if not options.config:
         raise ConfigException("Configuration not found")
 
     configuration = loadConfigurationFile( os.path.abspath(options.config) )
-
     status, msg = validateConfig(configuration)
     if not status:
         raise ConfigException(msg)
 
-    mw = MasterWorker(configuration, quiet=options.quiet, debug=options.debug)
+    dbconfiguration = loadConfigurationFile( os.path.abspath(options.dbconfig) )
+    status, msg = validateDbConfig(dbconfiguration)
+    if not status:
+        raise ConfigException(msg)
+
+    mw = MasterWorker(configuration, dbconfiguration, quiet=options.quiet, debug=options.debug)
     mw.algorithm()
     mw.slaves.stop()
     del mw

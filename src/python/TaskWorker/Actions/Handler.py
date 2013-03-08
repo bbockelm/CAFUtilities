@@ -35,7 +35,10 @@ class TaskHandler(object):
         nextinput = args
         for work in self.getWorks():
             output = work.execute(nextinput, task=self._task)
-            nextinput = output.result
+            try:
+                nextinput = output.result
+            except AttributeError:
+                nextinput = output
             ## here we handle potential errors from output.errors
         return nextinput
 

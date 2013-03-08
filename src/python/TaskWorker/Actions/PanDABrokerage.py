@@ -1,3 +1,5 @@
+import PandaServerInterface 
+
 from TaskWorker.Actions.PanDAAction import PanDAAction
 from TaskWorker.DataObjects.Result import Result
 
@@ -7,4 +9,22 @@ class PanDABrokerage(PanDAAction):
 
     def execute(self, *args, **kwargs):
         self.logger.info(" asking best site to PanDA ")
-        return Result()
+        results = []
+        for jgroup in args[0]:
+            possiblesites = jgroup.jobs[0]['input_files'][0]['locations']
+            availablesites = list( set(kwargs['task']['sitewhitelist']) if kwargs['task']['sitewhitelist'] else set(possiblesites) &
+                                   set(possiblesites) -
+                                   set(kwargs['task']['siteblacklist']))
+            fixedsites = set(self.config.Sites.available)
+            availablesites = list( set(availablesites) & fixedsites )
+            selectedsite = PandaServerInterface.runBrokerage(kwargs['task']['userdn'],
+                                                              kwargs['task']['vo'],
+                                                              kwargs['task']['group'],
+                                                              kwargs['task']['role'],
+                                                              ['ANALY_'+el for el in availablesites])[-1]
+            self.logger.info("Choosed site after brokering " +str(selectedsite))
+            if not selectedsite:
+                self.logger.error("No site available after brokering, skipping injection")
+                ##TODO: handle this issue
+            results.append(Result(result=selectedsite))
+        return results
