@@ -12,8 +12,8 @@ def addJobGroup(taskName, jobdefid, status, blocks, jobgroup_failure):
     factory = DBConnect.getConnection()
     newJobGroup = factory(classname = "JobGroup.AddJobGroup")
     try:
-        jobgroupId = newJobGroup.execute(
-	    taskName, jobdefid, status, blocks, jobgroup_failure)
+        jobgroupId = newJobGroup.execute(taskName, jobdefid, status,
+                                         blocks, jobgroup_failure)
     except Exception, ex:
         msg = "Unable to create task named %s\n" % taskName
         msg += str(ex)

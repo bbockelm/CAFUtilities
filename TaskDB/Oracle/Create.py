@@ -10,9 +10,7 @@ from WMCore.Database.DBCreator import DBCreator
 
 class Create(DBCreator):
     """
-
     Implementation of TaskMgr DB for Oracle
-
     """
     requiredTables = ['tasks',
                       'jobgroups',
@@ -35,13 +33,12 @@ class Create(DBCreator):
         self.create['b_tasks'] = """
         CREATE TABLE tasks(
         tm_taskname VARCHAR(255) NOT NULL,
-        panda_jobset_id NUMBER(11) NOT NULL,
+        panda_jobset_id NUMBER(11),
         tm_task_status VARCHAR(255) NOT NULL,
         tm_start_time TIMESTAMP,
         tm_start_injection TIMESTAMP,
         tm_end_injection TIMESTAMP,
-	tm_task_failure VARCHAR(255),
-        tm_job_type VARCHAR(255) NOT NULL,
+        tm_task_failure VARCHAR(255),
         tm_job_sw VARCHAR(255) NOT NULL,
         tm_job_arch VARCHAR(255),
         tm_input_dataset VARCHAR(255),
@@ -50,21 +47,21 @@ class Create(DBCreator):
         tm_split_algo VARCHAR(255) NOT NULL,
         tm_split_args VARCHAR(255) NOT NULL,
         tm_user_sandbox VARCHAR(255) NOT NULL,
-	tm_cache_url VARCHAR(255) NOT NULL,
+        tm_cache_url VARCHAR(255) NOT NULL,
         tm_username VARCHAR(255) NOT NULL,
-	tm_user_dn VARCHAR(255) NOT NULL,
-	tm_user_vo VARCHAR(255) NOT NULL,
-	tm_user_role VARCHAR(255),
+        tm_user_dn VARCHAR(255) NOT NULL,
+        tm_user_vo VARCHAR(255) NOT NULL,
+        tm_user_role VARCHAR(255),
         tm_user_group VARCHAR(255),
         tm_publish_name VARCHAR(255),
-	tm_asyncdest VARCHAR(255) NOT NULL,
-	tm_dbs_url VARCHAR(255) NOT NULL,
+        tm_asyncdest VARCHAR(255) NOT NULL,
+        tm_dbs_url VARCHAR(255) NOT NULL,
         tm_publish_dbs_url VARCHAR(255),
-	tm_outfiles VARCHAR(255),
-	tm_tfile_outfiles VARCHAR(255),
-	tm_edm_outfiles VARCHAR(255),
-	tm_data_runs VARCHAR(255),
-	tm_transformation VARCHAR(255) NOT NULL,
+        tm_outfiles VARCHAR(255),
+        tm_tfile_outfiles VARCHAR(255),
+        tm_edm_outfiles VARCHAR(255),
+        tm_data_runs VARCHAR(255),
+        tm_transformation VARCHAR(255) NOT NULL,
         tm_arguments VARCHAR(255),
         UNIQUE(panda_jobset_id, tm_user_dn, tm_user_vo, tm_user_role, tm_user_group),
         PRIMARY KEY(tm_taskname)
@@ -75,13 +72,13 @@ class Create(DBCreator):
         tm_jobgroups_id NUMBER(38) NOT NULL,
         tm_taskname VARCHAR(255) NOT NULL,
         panda_jobdef_id NUMBER(11),
-	panda_jobdef_status VARCHAR(255) NOT NULL,
+        panda_jobdef_status VARCHAR(255) NOT NULL,
         tm_data_blocks VARCHAR(255),
         panda_jobgroup_failure VARCHAR(255),
         UNIQUE(panda_jobdef_id),
         FOREIGN KEY(tm_taskname) references
             tasks(tm_taskname)
-               ON DELETE CASCADE,
+            ON DELETE CASCADE,
         PRIMARY KEY(tm_jobgroups_id)
         )
         """

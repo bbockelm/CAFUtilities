@@ -7,8 +7,7 @@ class SetStatusTask(DBFormatter):
 
     def execute(self, taskName, status, conn = None, transaction = False):
 
-        print taskName
-        self.sql = "UPDATE tasks SET tm_task_status = :status WHERE tm_taskname = :taskname"
+        self.sql = "UPDATE tasks SET tm_task_status = upper(:status) WHERE tm_taskname = :taskname"
         binds = {"taskname": taskName, "status": status}
         result = self.dbi.processData(self.sql, binds,
                          conn = conn, transaction = transaction)

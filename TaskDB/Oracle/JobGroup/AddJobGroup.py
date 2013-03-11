@@ -10,7 +10,7 @@ class AddJobGroup(DBFormatter):
 
         self.sql = "INSERT INTO JOBGROUPS ( "
         self.sql += "tm_taskname, panda_jobdef_id, panda_jobdef_status, tm_data_blocks, panda_jobgroup_failure)"
-        self.sql += " VALUES (:task_name, :jobdef_id, :jobgroup_status, :blocks, :jobgroup_failure) "
+        self.sql += " VALUES (:task_name, :jobdef_id, upper(:jobgroup_status), :blocks, :jobgroup_failure) "
         binds = {"task_name": taskName, "jobdef_id": jobdefid, "jobgroup_status": status, "blocks": blocks, "jobgroup_failure": jobgroup_failure}
 
         result = self.dbi.processData(self.sql, binds,

@@ -7,7 +7,7 @@ class SetInjectedTasks(DBFormatter):
 
     def execute(self, tm_taskname, status, jobset_id, conn = None, transaction = False):
 
-        self.sql = """UPDATE tasks SET tm_end_injection = :tm_end_injection, tm_task_status = :tm_task_status, panda_jobset_id = :panda_jobset_id
+        self.sql = """UPDATE tasks SET tm_end_injection = :tm_end_injection, tm_task_status = upper(:tm_task_status), panda_jobset_id = :panda_jobset_id
                       WHERE tm_taskname = :tm_taskname"""
         self.time_sql = "select SYS_EXTRACT_UTC(SYSTIMESTAMP) from dual"
 
