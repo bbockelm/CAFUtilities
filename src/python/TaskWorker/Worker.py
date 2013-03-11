@@ -4,7 +4,14 @@ import logging
 import time
 import traceback
 
+from WMCore.WMInit import WMInit
+
 from TaskWorker.DataObjects.Result import Result
+
+
+## Creating configuration globals to avoid passing these around at every request
+global WORKER_CONFIG
+global WORKER_DBCONFIG
 
 
 def processWorker(inputs, results):
@@ -14,47 +21,59 @@ def processWorker(inputs, results):
        :arg Queue inputs: the queue where the inputs are shared by the master
        :arg Queue results: the queue where this method writes the output
        :return: default returning zero, but not really needed."""
-    
+    logger = logging.getLogger(processWorker.__name__)
+    logger.debug("Starting DB connections...") 
+    wmInit = WMInit()
+    (dialect, junk) = WORKER_DBCONFIG.CoreDatabase.connectUrl.split(":", 1)
+    wmInit.setDatabaseConnection(dbConfig=WORKER_DBCONFIG.CoreDatabase.connectUrl, dialect=dialect)
+    logger.debug("...DB connections ready.")
     while True:
         try:
-            workid, work, config, task, inputargs = inputs.get()
+            workid, work, task, inputargs = inputs.get()
         except (EOFError, IOError):
             crashMessage = "Hit EOF/IO in getting new work\n"
             crashMessage += "Assuming this is a graceful break attempt.\n"
-            print crashMessage
+            logger.error(crashMessage)
             break
         if work == 'STOP':
             break
 
         outputs = None
+        logger.debug("Starting %s on %s" %(str(work), task))
         try:
-            outputs = work(config, task, inputargs)
+            outputs = work(WORKER_CONFIG, task, inputargs)
         except Exception, exc:
             outputs = Result(err=str(exc))
-            print "I just had a failure for ", exc
-            print "\tworkid=",workid
-            print "\ttask=",task
-            print traceback.format_exc()
+            msg = "I just had a failure for " + str(exc)
+            msg += "\n\tworkid=" + str(workid)
+            msg += "\n\ttask=" + str(task)
+            msg += "\n" + str(traceback.format_exc())
+            logger.error(msg)
+        logger.debug("...work on %s completed: %s" % (task, outputs))
 
         results.put({
                      'workid': workid,
                      'out' : outputs
                     })
+    logger.debug("Slave exiting.")
     return 0
 
 class Worker(object):
     """Worker class providing all the functionalities to manage all the slaves
        and distribute the work"""
 
-    def __init__(self, globalconfig, nworkers=None):
+    def __init__(self, config, dbconfig):
         """Initializer
 
-           :arg WMCore.Configuration config: input configuration 
-           :arg int nworkers: number of workers"""
+        :arg WMCore.Configuration config: input TaskWorker configuration
+        :arg WMCore.Configuration dbconfig: input for database configuration/secret."""
         self.logger = logging.getLogger(type(self).__name__)
-        self.globalconfig = globalconfig
+        global WORKER_CONFIG
+        WORKER_CONFIG = config
+        global WORKER_DBCONFIG
+        WORKER_DBCONFIG = dbconfig
         self.pool = []
-        self.nworkers = nworkers if nworkers else multiprocessing.cpu_count()
+        self.nworkers = WORKER_CONFIG.TaskWorker.nslaves if getattr(WORKER_CONFIG.TaskWorker, 'nslaves', None) is not None else multiprocessing.cpu_count()
         self.inputs  = multiprocessing.Queue()
         self.results = multiprocessing.Queue()
         self.working = {}
@@ -76,22 +95,21 @@ class Worker(object):
 
     def end(self):
         """Stopping all the slaves"""
-        #self.logger.info("Ready to close all %i started processes " \
-        #                % len(self.pool) )
+        self.logger.debug("Ready to close all %i started processes "%len(self.pool))
         for x in self.pool:
             try:
-                #self.logger.info("Shutting down %s " % str(x))
-                self.inputs.put( ('-1', 'STOP', 'control') )
+                self.logger.debug("Shutting down %s "%str(x))
+                self.inputs.put(('-1', 'STOP', 'control'))
             except Exception, ex:
                 msg =  "Hit some exception in deletion\n"
                 msg += str(ex)
-                #self.logger.error(msg)
+                self.logger.error(msg)
 
         for proc in self.pool:
             proc.terminate()
 
         self.pool = []
-        #self.logger.info('Slave stopped!')
+        self.logger.debug('Slave stopped!')
         return
 
     def injectWorks(self, items):
@@ -101,13 +119,15 @@ class Worker(object):
            :arg list of tuple items: list of tuple, where each element
                                      contains the type of work to be
                                      done, the task object and the args."""
+        self.logger.debug("Ready to inject %d items"%len(items))
         workid = 0 if len(self.working.keys()) == 0 else max(self.working.keys()) + 1
         for work in items:
             worktype, task, arguments = work
-            self.inputs.put((workid, worktype, self.globalconfig, task, arguments))
-            self.working[workid] = {'workflow': task['name'], 'injected': time.time()}
+            self.inputs.put((workid, worktype, task, arguments))
+            self.working[workid] = {'workflow': task['tm_taskname'], 'injected': time.time()}
             self.logger.info('Injecting work %d' %workid)
             workid += 1
+        self.logger.debug("Injection completed.")
 
     def checkFinished(self):
         """Verifies if there are any finished jobs in the output queue

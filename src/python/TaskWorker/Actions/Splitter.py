@@ -11,13 +11,14 @@ class Splitter(TaskAction):
        recevied input and arguments"""
 
     def execute(self, *args, **kwargs):
-        wmwork = Workflow(name=kwargs['task']['name'])
+        print '\n\n',args,'\n\n',kwargs,'\n\n'
+        wmwork = Workflow(name=kwargs['task']['tm_taskname'])
         wmsubs = Subscription(fileset=args[0], workflow=wmwork,
-                              split_algo=kwargs['task']['splitalgo'], type="Processing")
+                              split_algo=kwargs['task']['tm_split_algo'], type="Processing")
         splitter = SplitterFactory()
         jobfactory = splitter(subscription=wmsubs)
-        splitparam = kwargs['task']['splitargs']
-        splitparam['algorithm'] = kwargs['task']['splitalgo']
+        splitparam = kwargs['task']['tm_split_args']
+        splitparam['algorithm'] = kwargs['task']['tm_split_algo']
         return Result(result=jobfactory(**splitparam))
 
 

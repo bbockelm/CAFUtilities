@@ -51,8 +51,8 @@ def handleNewTask(config, task, *args, **kwargs):
     :*args and *kwargs: extra parameters currently not defined
     :return: the result of the handler operation."""
     handler = TaskHandler(task)
-    handler.addWork( DBSDataDiscovery(config) )
-    handler.addWork( Splitter(config) )
+    handler.addWork( DBSDataDiscovery(config=config) )
+    handler.addWork( Splitter(config=config) )
     handler.addWork( PanDABrokerage(pandaconfig=config) )
     handler.addWork( PanDAInjection(pandaconfig=config) )
     return handler.actionWork(args)
@@ -82,8 +82,8 @@ def handleKill(config, task, *args, **kwargs):
 
 if __name__ == '__main__':
     print "New task"
-    handleNewTask(config={}, task=None)
+    handleNewTask(task=None)
     print "\nResubmit task"
-    handleResubmit(config={}, task=None)
+    handleResubmit(task=None)
     print "\nKill task"
-    handleKill(config={}, task=None)
+    handleKill(task=None)

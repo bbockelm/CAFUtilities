@@ -2,16 +2,12 @@ import time
 import logging
 import os
 
-#temporary
-#from TaskDB.Interface.Task.GetTasks import getReadyTasks
-#from TaskDB.Interface.Task.SetTasks import setReadyTasks
-#from WMCore.WMInit import WMInit
+from WMCore.Configuration import loadConfigurationFile, Configuration
 
 from TaskWorker.DataObjects.Task import Task
 from TaskWorker.Worker import Worker
 from TaskWorker.WorkerExceptions import *
-
-from WMCore.Configuration import loadConfigurationFile, Configuration
+from TaskWorker.DBPoller import DBPoller
 
 
 def validateConfig(config):
@@ -32,15 +28,17 @@ def validateDbConfig(config):
         return False, "Configuration problem: Core Database section is missing. "
     return True, 'Ok'
 
-
 class MasterWorker(object):
     """I am the master of the TaskWorker"""
 
     def __init__(self, config, dbconfig, quiet, debug):
         """Initializer
 
-        :arg WMCore.Configuration config: input configuration
-        :arg logging logger: the logger."""
+        :arg WMCore.Configuration config: input TaskWorker configuration
+        :arg WMCore.Configuration dbconfig: input for database configuration/secret
+        :arg logging logger: the logger
+        :arg bool quiet: it tells if a quiet logger is needed
+        :arg bool debug: it tells if needs a verbose logger."""
         def getLogging(quiet, debug):
             """Retrieves a logger and set the proper level
 
@@ -59,45 +57,16 @@ class MasterWorker(object):
         self.logger = getLogging(quiet, debug)
         self.config = config
         self.dbconfig = dbconfig
-        self.slaves = Worker(self.config, self.config.TaskWorker.nslaves)
+        self.db = DBPoller(dbconfig=dbconfig)
+        self.slaves = Worker(self.config, self.dbconfig)
         self.slaves.begin()
-
-    def pollSourceDB(self, worklimit):
-        """This method aims to contain the logic to retrieve the work
-           from the source database.
-
-           :arg int worklimit: the maximum amount of works to retrieve
-           :return: the list of input work to process."""
-        if worklimit == 0:
-            return []
-        elif worklimit <= 0:
-            self.logger.error('More work then slaves acquired. Unexpected behaviour.')
-            return []
-        #wmInit = WMInit()
-        #(dialect, junk) = self.dbconfig.CoreDatabase.connectUrl.split(":", 1)
-        #wmInit.setDatabaseConnection(dbConfig=self.dbconfig.CoreDatabase.connectUrl, dialect=dialect)
-        #result = getReadyTasks()
-        #print result
-        #for task in result:
-            #setReadyTasks(task[0], 'queued', time.time())
-
-        # now emulating this 
-        from TaskWorker.Actions.Handler import handleResubmit, handleNewTask 
-        return [(handleNewTask, Task({'name': 'testme', 'dataset':'/DYJetsToLL_M-50_TuneZ2Star_8TeV-madgraph-tarball/Summer12_DR53X-PU_S10_START53_V7A-v1/AODSIM',
-                                      'splitargs': {'halt_job_on_file_boundaries': False, 'lumis_per_job': 50, 'splitOnRun': False},
-                                      'splitalgo': 'LumiBased', 'sitewhitelist': ['T2_CH_CERN', 'T1_US_FNAL'], 'siteblacklist': [],
-                                      'userdn': '/DC=ch/DC=cern/OU=Organic Units/OU=Users/CN=mcinquil/CN=660800/CN=Mattia Cinquilli', 'vo': 'cms', 'group': '', 'role': ''}), None),
-                (handleNewTask, Task({'name': 'pippo', 'dataset':'/DYJetsToLL_M-50_TuneZ2Star_8TeV-madgraph-tarball/Summer12_DR53X-PU_S10_START53_V7A-v1/AODSIM',
-                                      'splitargs': {'halt_job_on_file_boundaries': False, 'lumis_per_job': 50, 'splitOnRun': False},
-                                      'splitalgo': 'LumiBased', 'sitewhitelist': ['T2_CH_CERN', 'T1_US_FNAL'], 'siteblacklist': [],
-                                      'userdn': '/DC=ch/DC=cern/OU=Organic Units/OU=Users/CN=mcinquil/CN=660800/CN=Mattia Cinquilli', 'vo': 'cms', 'group': '', 'role': ''}), None)]
 
     def algorithm(self):
         """I'm the intelligent guy taking care of getting the work
            and distribuiting it to the slave processes."""
         self.logger.debug("Starting")
         while(True):
-            pendingWork = self.pollSourceDB(self.slaves.freeSlaves())
+            pendingWork = self.db.getNew(self.slaves.freeSlaves())
             self.logger.info("Retrieved a total of %d works", len(pendingWork))
             self.slaves.injectWorks(pendingWork)
             self.logger.info('Worker status:')

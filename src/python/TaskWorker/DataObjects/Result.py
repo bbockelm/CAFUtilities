@@ -29,9 +29,11 @@ class Result(object):
 
     def __str__(self):
         """Use me just to print out in case it is needed to debug"""
+        msg = ''
         if self.result:
-            print "Result = ", self.result
+            msg += "Result = " + str(self.result)
         if self.error:
-            print "Error = ", self.error
+            msg += "Error = " + str(self.error)
         if self.warning:
-            print "Warning = ", self.warning
+            msg += "Warning = " + str(self.warning)
+        return msg

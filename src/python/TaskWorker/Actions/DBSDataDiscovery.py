@@ -12,13 +12,13 @@ class DBSDataDiscovery(DataDiscovery):
         # Get the list of blocks for the locations and then call dls.
         # The WMCore DBS3 implementation makes one call to dls for each block
         # with locations = True
-        blocks = [ x['Name'] for x in dbs.getFileBlocksInfo(kwargs['task']['dataset'], locations=False)]
+        blocks = [ x['Name'] for x in dbs.getFileBlocksInfo(kwargs['task']['tm_input_dataset'], locations=False)]
         #Create a map for block's locations: for each block get the list of locations
         locations = map(lambda x: map(lambda y: y.host, x.locations), dbs.dls.getLocations(list(blocks),  showProd = True))
         locationsmap = dict(zip(blocks, locations))
-        filedetails = dbs.listDatasetFileDetails(kwargs['task']['dataset'], True)
+        filedetails = dbs.listDatasetFileDetails(kwargs['task']['tm_input_dataset'], True)
 
-        return self.formatOutput(requestname=kwargs['task']['name'], datasetfiles=filedetails, locations=locationsmap)
+        return self.formatOutput(requestname=kwargs['task']['tm_taskname'], datasetfiles=filedetails, locations=locationsmap)
 
 
 if __name__ == '__main__':
