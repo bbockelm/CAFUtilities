@@ -29,5 +29,5 @@ class PanDABrokerage(PanDAAction):
                 ##TODO: handle this issue
                 results.append(Result(err=msg))
             else:
-                results.append(Result(result=selectedsite))
+                results.append(Result(result=(jgroup, selectedsite)))
         return results
