@@ -8,24 +8,18 @@ from WMCore.Database.DBFormatter import DBFormatter
 class New(DBFormatter):
     """
     """
-    def __init__(self, logger, dbinterface):
-        """
-        """
-        self.logger = logger
-        self.dbi = dbinterface
-        self.sql = "INSERT INTO tasks ( "
-        self.sql += "tm_taskname,panda_jobset_id, tm_task_status, tm_start_time, tm_task_failure, tm_job_sw, \
-                     tm_job_arch, tm_input_dataset, tm_site_whitelist, tm_site_blacklist, \
-                     tm_split_algo, tm_split_args, tm_user_sandbox, tm_cache_url, tm_username, tm_user_dn, \
-                     tm_user_vo, tm_user_role, tm_user_group, tm_publish_name, tm_asyncdest, tm_dbs_url, tm_publish_dbs_url, \
-                     tm_outfiles, tm_tfile_outfiles, tm_edm_outfiles, tm_data_runs, tm_transformation, tm_arguments)"
-        self.sql += " VALUES (:task_name, :jobset_id, upper(:task_status), :start_time, :task_failure, :job_sw, \
-                     :job_arch, :input_dataset, :site_whitelist, :site_blacklist, :split_algo, :split_args, :user_sandbox, \
-                     :cache_url, :username, :user_dn, \
-                     :user_vo, :user_role, :user_group, :publish_name, :asyncdest, :dbs_url, :publish_dbs_url, \
-                     :outfiles, :tfile_outfiles, :edm_outfiles, :data_runs, :transformation, :arguments)"
-
-        self.time_sql = "select SYS_EXTRACT_UTC(SYSTIMESTAMP) from dual"
+    sql = "INSERT INTO tasks ( "
+    sql += "tm_taskname,panda_jobset_id, tm_task_status, tm_start_time, tm_task_failure, tm_job_sw, \
+            tm_job_arch, tm_input_dataset, tm_site_whitelist, tm_site_blacklist, \
+            tm_split_algo, tm_split_args, tm_user_sandbox, tm_cache_url, tm_username, tm_user_dn, \
+            tm_user_vo, tm_user_role, tm_user_group, tm_publish_name, tm_asyncdest, tm_dbs_url, tm_publish_dbs_url, \
+            tm_outfiles, tm_tfile_outfiles, tm_edm_outfiles, tm_data_runs, tm_transformation, tm_arguments)"
+    sql += " VALUES (:task_name, :jobset_id, upper(:task_status), :start_time, :task_failure, :job_sw, \
+            :job_arch, :input_dataset, :site_whitelist, :site_blacklist, :split_algo, :split_args, :user_sandbox, \
+            :cache_url, :username, :user_dn, \
+            :user_vo, :user_role, :user_group, :publish_name, :asyncdest, :dbs_url, :publish_dbs_url, \
+            :outfiles, :tfile_outfiles, :edm_outfiles, :data_runs, :transformation, :arguments)"
+    time_sql = "select SYS_EXTRACT_UTC(SYSTIMESTAMP) from dual"
 
     def execute(self, taskName, jobsetId, taskStatus, taskFailure, jobSw, jobArch, inputDataset, \
                 siteWhitelist, siteBlacklist, splitAlgo, splitArgs, userSandbox, cacheUrl, username, userDn, \

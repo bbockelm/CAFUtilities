@@ -63,7 +63,6 @@ class Create(DBCreator):
         tm_data_runs VARCHAR(255),
         tm_transformation VARCHAR(255) NOT NULL,
         tm_arguments VARCHAR(255),
-        UNIQUE(panda_jobset_id, tm_user_dn, tm_user_vo, tm_user_role, tm_user_group),
         PRIMARY KEY(tm_taskname)
         )
         """
