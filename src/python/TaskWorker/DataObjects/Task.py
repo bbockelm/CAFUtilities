@@ -29,8 +29,8 @@ class Task(dict):
         self['tm_job_sw'] = task[7]
         self['tm_job_arch'] = task[8]
         self['tm_input_dataset'] = task[9]
-        self['tm_site_whitelist'] = task[10] #literal_eval(task[10])
-        self['tm_site_blacklist'] = task[11] #literal_eval(task[11])
+        self['tm_site_whitelist'] = literal_eval(task[10])
+        self['tm_site_blacklist'] = literal_eval(task[11])
         self['tm_split_algo'] = task[12]
         self['tm_split_args'] = literal_eval(task[13])
         self['tm_user_sandbox'] = task[14]
