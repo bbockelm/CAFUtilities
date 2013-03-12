@@ -39,7 +39,8 @@ def processWorker(inputs, results):
             break
 
         outputs = None
-        logger.debug("Starting %s on %s" %(str(work), task))
+        t0 = time.time()
+        logger.debug("Starting %s on %s" %(str(work), task['tm_taskname']))
         try:
             outputs = work(WORKER_CONFIG, task, inputargs)
         except Exception, exc:
@@ -49,7 +50,8 @@ def processWorker(inputs, results):
             msg += "\n\ttask=" + str(task)
             msg += "\n" + str(traceback.format_exc())
             logger.error(msg)
-        logger.debug("...work on %s completed: %s" % (task, outputs))
+        t1 = time.time()
+        logger.debug("...work on %s completed in %d seconds: %s" % (task['tm_taskname'], t1-t0, outputs))
 
         results.put({
                      'workid': workid,

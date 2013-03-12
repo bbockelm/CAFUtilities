@@ -1,3 +1,6 @@
+import logging
+import time
+
 from TaskWorker.Actions.DBSDataDiscovery import DBSDataDiscovery
 from TaskWorker.Actions.Splitter import Splitter
 from TaskWorker.Actions.PanDABrokerage import PanDABrokerage
@@ -13,6 +16,7 @@ class TaskHandler(object):
         """Initializer
 
         :arg TaskWorker.DataObjects.Task task: the task to work on."""
+        self.logger = logging.getLogger(type(self).__name__)
         self._work = []
         self._task = task
 
@@ -34,12 +38,17 @@ class TaskHandler(object):
         """Performing the set of actions"""
         nextinput = args
         for work in self.getWorks():
+            self.logger.debug("Starting %s on %s" % (str(work), self._task['tm_taskname']))
+            t0 = time.time()
             output = work.execute(nextinput, task=self._task)
+            t1 = time.time()
+            self.logger.debug("Finished %s on %s in %d seconds" % (str(work), self._task['tm_taskname'], t1-t0))
             try:
                 nextinput = output.result
             except AttributeError:
                 nextinput = output
             ## here we handle potential errors from output.errors
+        tot1 = time.time()
         return nextinput
 
 
