@@ -119,6 +119,6 @@ class PanDAInjection(PanDAAction):
                 self.logger.error(msg)
                 addJobGroup(kwargs['task']['tm_taskname'], None, "Failed", ",".join(blocks), str(exc))
         if not jobset:
-            
+            self.logger.error("No task id available for the task. Setting %s at failed." % kwargs['task'])
             setFailedTasks(kwargs['task']['tm_taskname'], "Failed", "all problems here")
         return results

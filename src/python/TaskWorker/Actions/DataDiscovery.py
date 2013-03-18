@@ -6,6 +6,9 @@ from WMCore.Services.SiteDB.SiteDB import SiteDBJSON
 from TaskWorker.Actions.TaskAction import TaskAction
 from TaskWorker.DataObjects.Result import Result
 
+# TEMPORARY
+from WMCore.Services.SiteDB.SiteDB import SiteDBJSON
+
 
 class DataDiscovery(TaskAction):
     """I am the abstract class for the data discovery.
