@@ -17,7 +17,12 @@ class PanDAInjection(PanDAAction):
     """Creating the specs and injecting them into PanDA"""
 
     def inject(self, task, pandajobspecs):
-        pandajobspecs = pandajobspecs[0:3]
+        """Injects in PanDA the taskbuffer objects containing the jobs specs.
+
+           :arg TaskWorker.DataObject.Task task: the task to work on
+           :arg list taskbuffer.JobSpecs pandajobspecs: the list of specs to inject
+           :return: dictionary containining the injection resulting id's."""
+        #pandajobspecs = pandajobspecs[0:3]
         status, injout = PandaServerInterface.submitJobs(pandajobspecs, task['tm_user_dn'], task['tm_user_vo'], task['tm_user_group'], task['tm_user_role'], True)
         self.logger.info('PanDA submission exit code: %s' % status)
         jobsetdef = {}
@@ -30,27 +35,43 @@ class PanDAInjection(PanDAAction):
         return jobsetdef
 
     def makeSpecs(self, task, jobgroup, site, jobset, jobdef):
+        """Building the specs
+
+        :arg TaskWorker.DataObject.Task task: the task to work on
+        :arg WMCore.DataStructs.JobGroup jobgroup: the group containing the jobs
+        :arg str site: the borkered site where to run the jobs
+        :arg int jobset: the PanDA jobset corresponding to the current task
+        :arg int jobdef: the PanDA jobdef where to append the current jobs --- not used
+        :return: the list of job sepcs objects."""
         PandaServerInterface.refreshSpecs()
         pandajobspec = []
-        jobset = jobset if jobset else int(time.time()) % 10000
         basejobname = "%s" % commands.getoutput('uuidgen')
         i = 0
         for job in jobgroup.jobs:
-            if i > 10:
-                break
+            #if i > 10:
+            #    break
             jobname = "%s-%d" %(basejobname, i)
             pandajobspec.append(self.createJobSpec(task, job, jobset, jobdef, site, jobname))
             i += 1
         return pandajobspec
 
     def createJobSpec(self, task, job, jobset, jobdef, site, jobname):
+        """Create a spec for one job
+
+        :arg TaskWorker.DataObject.Task task: the task to work on
+        :arg WMCore.DataStructs.Job job: the abstract job
+        :arg int jobset: the PanDA jobset corresponding to the current task
+        :arg int jobdef: the PanDA jobdef where to append the current jobs --- not used
+        :arg str site: the borkered site where to run the jobs
+        :arg str jobname: the job name
+        :return: the sepc object."""
         datasetname = 'user/%s/%s' % (task['tm_username'], task['tm_publish_name'])
         
         pandajob = JobSpec()
         ## always setting a job definition ID
-        pandajob.jobDefinitionID = jobdef if jobdef else 1
+        pandajob.jobDefinitionID = jobdef if jobdef else -1
         ## always setting a job set ID
-        pandajob.jobsetID = jobset
+        pandajob.jobsetID = jobset if jobset else -1
         pandajob.jobName = jobname
         pandajob.prodUserID = task['tm_user_dn']
         pandajob.destinationDBlock = datasetname
