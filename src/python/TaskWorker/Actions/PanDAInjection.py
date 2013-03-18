@@ -32,19 +32,26 @@ class PanDAInjection(PanDAAction):
     def makeSpecs(self, task, jobgroup, site, jobset, jobdef):
         PandaServerInterface.refreshSpecs()
         pandajobspec = []
+        jobset = jobset if jobset else int(time.time()) % 10000
+        basejobname = "%s" % commands.getoutput('uuidgen')
+        i = 0
         for job in jobgroup.jobs:
-            pandajobspec.append(self.createJobSpec(task, job, jobset, jobdef, site))
+            if i > 10:
+                break
+            jobname = "%s-%d" %(basejobname, i)
+            pandajobspec.append(self.createJobSpec(task, job, jobset, jobdef, site, jobname))
+            i += 1
         return pandajobspec
 
-    def createJobSpec(self, task, job, jobset, jobdef, site):
+    def createJobSpec(self, task, job, jobset, jobdef, site, jobname):
         datasetname = 'user/%s/%s' % (task['tm_username'], task['tm_publish_name'])
         
         pandajob = JobSpec()
         ## always setting a job definition ID
         pandajob.jobDefinitionID = jobdef if jobdef else 1
         ## always setting a job set ID
-        pandajob.jobsetID = jobset if jobset else int(time.time()) % 10000 
-        pandajob.jobName = "%s" % commands.getoutput('uuidgen')
+        pandajob.jobsetID = jobset
+        pandajob.jobName = jobname
         pandajob.prodUserID = task['tm_user_dn']
         pandajob.destinationDBlock = datasetname
         pandajob.prodSourceLabel = 'user'

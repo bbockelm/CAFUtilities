@@ -45,7 +45,7 @@ class DataDiscovery(TaskAction):
             wmfile['workflow'] = requestname
             evecounter += infos['NumberOfEvents']
             for run, lumis in infos['Lumis'].iteritems():
-                self.logger.debug(' - adding run %d and lumis %s' %(run, lumis))
+                #self.logger.debug(' - adding run %d and lumis %s' %(run, lumis))
                 wmfile.addRun(Run(run, *lumis))
                 lumicounter += len(lumis)
             wmfiles.append(wmfile)
