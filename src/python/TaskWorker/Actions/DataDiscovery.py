@@ -1,6 +1,7 @@
 from WMCore.DataStructs.File import File
 from WMCore.DataStructs.Fileset import Fileset
 from WMCore.DataStructs.Run import Run
+from WMCore.Services.SiteDB.SiteDB import SiteDBJSON
 
 from TaskWorker.Actions.TaskAction import TaskAction
 from TaskWorker.DataObjects.Result import Result
@@ -16,14 +17,28 @@ class DataDiscovery(TaskAction):
         """Receives as input the result of the data location
            discovery operations and fill up the WMCore objects."""
         self.logger.info(" Formatting data discovery output ") ## to become debug
-
+  
+        # TEMPORARY
+        secmsmap = {}
+        sbj = SiteDBJSON()
+ 
         wmfiles = []
         lumicounter = evecounter = 0
 
         for lfn, infos in datasetfiles.iteritems():
             wmfile = File(lfn=lfn, events=infos['NumberOfEvents'], size=infos['Size'], checksums=infos['Checksums'])
             wmfile['block'] = infos['BlockName']
-            wmfile['locations'] = locations[infos['BlockName']]
+            wmfile['locations'] = []
+            for se in locations[infos['BlockName']]:
+                if se not in secmsmap:
+                    self.logger.debug("Translating SE %s" %se)
+                    try:
+                        secmsmap[se] = sbj.seToCMSName(se)
+                    except KeyError, ke:
+                        self.logger.error("Impossible translating %s to a CMS name through SiteDB" %se)
+                        secmsmap[se] = ''
+                if se in secmsmap:
+                    wmfile['locations'].append(secmsmap[se])
             wmfile['workflow'] = requestname
             evecounter += infos['NumberOfEvents']
             for run, lumis in infos['Lumis'].iteritems():

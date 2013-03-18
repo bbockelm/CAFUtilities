@@ -17,6 +17,7 @@ class PanDABrokerage(PanDAAction):
                                    set(kwargs['task']['tm_site_blacklist']))
             fixedsites = set(self.config.Sites.available)
             availablesites = list( set(availablesites) & fixedsites )
+            self.logger.info("Asking best site to PanDA between %s" % str(availablesites))
             selectedsite = PandaServerInterface.runBrokerage(kwargs['task']['tm_user_dn'],
                                                               kwargs['task']['tm_user_vo'],
                                                               kwargs['task']['tm_user_group'],

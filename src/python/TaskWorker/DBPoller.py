@@ -2,8 +2,8 @@ import logging
 
 from WMCore.WMInit import WMInit
 
-from CAFUtilities.TaskDB.Interface.Task.GetTasks import getReadyTasks
-from CAFUtilities.TaskDB.Interface.Task.SetTasks import setReadyTasks
+from TaskDB.Interface.Task.GetTasks import getReadyTasks
+from TaskDB.Interface.Task.SetTasks import setReadyTasks
 
 from TaskWorker.DataObjects.Task import Task
 from TaskWorker.Actions.Handler import handleResubmit, handleNewTask, handleKill
