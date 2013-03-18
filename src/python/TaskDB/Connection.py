@@ -21,7 +21,7 @@ def getConnection():
 
     """
     myThread = threading.currentThread()
-    factory = DAOFactory(package = 'CAFUtilities.TaskDB',
+    factory = DAOFactory(package = 'TaskDB',
                          logger = logging.getLogger(),
                          dbinterface = myThread.dbi)
     return factory

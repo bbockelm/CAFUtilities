@@ -6,7 +6,7 @@ import threading
 import string
 
 from WMCore.Database.DBCreator import DBCreator
-from CAFUtilities.TaskDB.Oracle.Create import Create
+from TaskDB.Oracle.Create import Create
 
 class Destroy(DBCreator):
     def __init__(self, logger = None, dbi = None, param=None):

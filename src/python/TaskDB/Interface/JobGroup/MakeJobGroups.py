@@ -3,7 +3,7 @@
 _MakeJobGroup_
 """
 import logging
-import CAFUtilities.TaskDB.Connection as DBConnect
+import TaskDB.Connection as DBConnect
 
 def addJobGroup(taskName, jobdefid, status, blocks, jobgroup_failure):
     """
