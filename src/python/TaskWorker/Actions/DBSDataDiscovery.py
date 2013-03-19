@@ -9,6 +9,9 @@ class DBSDataDiscovery(DataDiscovery):
     def execute(self, *args, **kwargs):
         self.logger.info("Data discovery with DBS") ## to be changed into debug
         dbs = get_dbs(self.config.Services.DBSUrl)
+        if kwargs['task']['tm_dbs_url']:
+            dbs = get_dbs(kwargs['task']['tm_dbs_url'])
+        self.logger.debug("Data discovery through %s for %s" %(dbs, kwargs['task']))
         # Get the list of blocks for the locations and then call dls.
         # The WMCore DBS3 implementation makes one call to dls for each block
         # with locations = True
