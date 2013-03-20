@@ -18,7 +18,7 @@ class Splitter(TaskAction):
         jobfactory = splitter(subscription=wmsubs)
         splitparam = kwargs['task']['tm_split_args']
         splitparam['algorithm'] = kwargs['task']['tm_split_algo']
-        return Result(result=jobfactory(**splitparam))
+        return Result(task=kwargs['task'], result=jobfactory(**splitparam))
 
 
 if __name__ == '__main__':

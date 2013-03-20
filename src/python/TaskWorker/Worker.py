@@ -7,6 +7,7 @@ import traceback
 from WMCore.WMInit import WMInit
 
 from TaskWorker.DataObjects.Result import Result
+from TaskWorker.WorkerExceptions import WorkerHandlerException
 
 
 ## Creating configuration globals to avoid passing these around at every request
@@ -43,8 +44,11 @@ def processWorker(inputs, results):
         logger.debug("Starting %s on %s" %(str(work), task['tm_taskname']))
         try:
             outputs = work(WORKER_CONFIG, task, inputargs)
+        except WorkerHandlerException, we:
+            #logger.error(we)
+            outputs = Result(task=task, err=str(we))
         except Exception, exc:
-            outputs = Result(err=str(exc))
+            outputs = Result(task=task, err=str(exc))
             msg = "I just had a failure for " + str(exc)
             msg += "\n\tworkid=" + str(workid)
             msg += "\n\ttask=" + str(task)
@@ -135,15 +139,22 @@ class Worker(object):
         """Verifies if there are any finished jobs in the output queue
 
            :return Result: the output of the work completed."""
-        out = None
-        try:
-            out = self.results.get(block = False)
-        except Empty, e:
-            pass
-        if out is not None:
-           self.logger.debug('Retrieved work %s'% str(out))
-           del self.working[out['workid']]
-        return out
+        allout = []
+        self.logger.info("%d work finished, being retrieved" % len(self.working.keys()))
+        for i in xrange(len(self.working.keys())):
+            out = None
+            try:
+                out = self.results.get_nowait()
+            except Empty, e:
+                pass
+            if out is not None:
+               self.logger.debug('Retrieved work %s'% str(out))
+               if isinstance(out['out'], list):
+                   allout.extend(out['out'])
+               else:
+                   allout.append(out['out'])
+               del self.working[out['workid']]
+        return allout
 
     def freeSlaves(self):
         """Count how many unemployed slaves are there

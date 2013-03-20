@@ -72,7 +72,7 @@ class MasterWorker(object):
             self.logger.info('Worker status:')
             self.logger.info(' - busy slaves: %d' % self.slaves.busySlaves())
             self.logger.info(' - free slaves: %d' % self.slaves.freeSlaves())
-            self.slaves.checkFinished()
+            self.db.updateFinished(self.slaves.checkFinished())
             time.sleep(self.config.TaskWorker.polling)
         self.logger.debug("Stopping")
 

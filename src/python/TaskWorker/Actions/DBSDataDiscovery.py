@@ -21,7 +21,7 @@ class DBSDataDiscovery(DataDiscovery):
         locationsmap = dict(zip(blocks, locations))
         filedetails = dbs.listDatasetFileDetails(kwargs['task']['tm_input_dataset'], True)
 
-        return self.formatOutput(requestname=kwargs['task']['tm_taskname'], datasetfiles=filedetails, locations=locationsmap)
+        return self.formatOutput(task=kwargs['task'], requestname=kwargs['task']['tm_taskname'], datasetfiles=filedetails, locations=locationsmap)
 
 
 if __name__ == '__main__':

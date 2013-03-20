@@ -51,15 +51,9 @@ class Task(dict):
         self['tm_transformation'] = task[29]
         self['tm_arguments'] = task[30]
 
-    #def _setStatus(self, status):
-    #    setReadyTasks(self['name'], status)
-
-    #def setQueued(self):
-    #    self._setStatus('queued')
-
-    # aggiorna lo stato di un task dato il taskname da queued a failed (***).  
-    def setFailed(self, reason, groups):
-        raise NotImplementedError
-
-    # aggiorna il campo end_injection 
-    # aggiorna il jobsetid del task
+    def __str__(self):
+        """Use me to avoiding to vomiting all parameters around.
+           This will be annoying for people debugging things."""
+        if 'tm_taskname' in self:
+            return self['tm_taskname']
+        return super(dict, self).__str__()

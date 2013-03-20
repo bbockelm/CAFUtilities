@@ -16,7 +16,7 @@ class DataDiscovery(TaskAction):
        possibilities. Implementing only a common method to
        return a properly formatted output."""
 
-    def formatOutput(self, requestname, datasetfiles, locations):
+    def formatOutput(self, task, requestname, datasetfiles, locations):
         """Receives as input the result of the data location
            discovery operations and fill up the WMCore objects."""
         self.logger.info(" Formatting data discovery output ") ## to become debug
@@ -54,4 +54,4 @@ class DataDiscovery(TaskAction):
         self.logger.debug('Tot lumis found: %d' %lumicounter)
         self.logger.debug('Tot files found: %d' %len(wmfiles))
 
-        return Result(result=Fileset(name='FilesToSplit', files = set(wmfiles)))
+        return Result(task=task, result=Fileset(name='FilesToSplit', files = set(wmfiles)))

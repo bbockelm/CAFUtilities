@@ -3,7 +3,7 @@ import logging
 from WMCore.WMInit import WMInit
 
 from TaskDB.Interface.Task.GetTasks import getReadyTasks
-from TaskDB.Interface.Task.SetTasks import setReadyTasks
+from TaskDB.Interface.Task.SetTasks import setReadyTasks, setFailedTasks
 
 from TaskWorker.DataObjects.Task import Task
 from TaskWorker.Actions.Handler import handleResubmit, handleNewTask, handleKill
@@ -69,3 +69,14 @@ class DBPoller(object):
             tasktodo.append((STATE_ACTIONS_MAP[newtask['tm_task_status']], newtask, None))
 
         return tasktodo
+
+    def updateFinished(self, finished):
+        """This updates the finished processed work
+
+        :arg list TaskWorker.DataObjects.Result finished: the list of results."""
+        if not finished:
+            return
+        for res in finished:
+            if res.error:
+                self.logger.error("Setting %s as failed" % str(res.task))
+                setFailedTasks(res.task['tm_taskname'], "Failed", res.error)

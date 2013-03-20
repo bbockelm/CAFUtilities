@@ -1,5 +1,6 @@
 import logging
 import time
+import traceback
 
 from TaskWorker.Actions.DBSDataDiscovery import DBSDataDiscovery
 from TaskWorker.Actions.Splitter import Splitter
@@ -7,7 +8,7 @@ from TaskWorker.Actions.PanDABrokerage import PanDABrokerage
 from TaskWorker.Actions.PanDAInjection import PanDAInjection
 from TaskWorker.Actions.PanDAgetSpecs import PanDAgetSpecs
 from TaskWorker.Actions.PanDAKill import PanDAKill
-
+from TaskWorker.WorkerExceptions import WorkerHandlerException
 
 class TaskHandler(object):
     """Handling the set of operations to be performed."""
@@ -40,7 +41,13 @@ class TaskHandler(object):
         for work in self.getWorks():
             self.logger.debug("Starting %s on %s" % (str(work), self._task['tm_taskname']))
             t0 = time.time()
-            output = work.execute(nextinput, task=self._task)
+            try:
+                output = work.execute(nextinput, task=self._task)
+            except Exception, exc:
+                msg = "Problem handling %s because of %s failure, tracebak follows\n" % (self._task, str(exc))
+                msg += str(traceback.format_exc())
+                self.logger.error(msg)
+                raise WorkerHandlerException(msg)
             t1 = time.time()
             self.logger.debug("Finished %s on %s in %d seconds" % (str(work), self._task['tm_taskname'], t1-t0))
             try:

@@ -142,11 +142,15 @@ class PanDAInjection(PanDAAction):
                     for jd in outjobdefs:
                         addJobGroup(kwargs['task']['tm_taskname'], jd, "Submitted", ",".join(blocks), None)
                     setInjectedTasks(kwargs['task']['tm_taskname'], "Submitted", outjobset)
+                    results.append(Result(task=kwargs['task'], result=jobsetdef))
             except Exception, exc:
                 msg = "Problem %s injecting job group from task %s reading data from blocks %s" % (str(exc), kwargs['task'], ",".join(blocks))
                 self.logger.error(msg)
                 addJobGroup(kwargs['task']['tm_taskname'], None, "Failed", ",".join(blocks), str(exc))
+                results.append(Result(task=kwargs['task'], warn=msg))
         if not jobset:
-            self.logger.error("No task id available for the task. Setting %s at failed." % kwargs['task'])
-            setFailedTasks(kwargs['task']['tm_taskname'], "Failed", "all problems here")
+            msg = "No task id available for the task. Setting %s at failed." % kwargs['task']
+            self.logger.error(msg)
+            setFailedTasks(kwargs['task']['tm_taskname'], "Failed", msg)
+            results.append(Result(task=kwargs['task'], err=msg))
         return results

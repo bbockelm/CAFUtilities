@@ -6,4 +6,4 @@ class PanDAKill(PanDAAction):
 
     def execute(self, *args, **kwargs):
         self.logger.info(" killing injected jobs ")
-        return Result()
+        return Result(task=kwargs['task'])

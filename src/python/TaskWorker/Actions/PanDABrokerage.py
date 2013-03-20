@@ -31,7 +31,7 @@ class PanDABrokerage(PanDAAction):
                 msg = "No site available after brokering, skipping injection"
                 self.logger.error(msg)
                 ##TODO: handle this issue
-                results.append(Result(err=msg))
+                results.append(Result(task=kwargs['task'], err=msg))
             else:
-                results.append(Result(result=(jgroup, selectedsite)))
+                results.append(Result(task=kwargs['task'], result=(jgroup, selectedsite)))
         return results

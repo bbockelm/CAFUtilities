@@ -7,4 +7,4 @@ class PanDAgetSpecs(PanDAAction):
 
     def execute(self, *args, **kwargs):
         self.logger.info(" get already existing specs ")
-        return Result()
+        return Result(task=kwargs['task'])
