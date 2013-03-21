@@ -44,9 +44,9 @@ class Task(dict):
         self['tm_asyncdest'] = task[22]
         self['tm_dbs_url'] = task[23]
         self['tm_publish_dbs_url'] = task[24]
-        self['tm_outfiles'] = task[25]
-        self['tm_tfile_outfiles'] = task[26]
-        self['tm_edm_outfiles'] = task[27]
+        self['tm_outfiles'] = literal_eval(task[25])
+        self['tm_tfile_outfiles'] = literal_eval(task[26])
+        self['tm_edm_outfiles'] = literal_eval(task[27])
         self['tm_data_runs'] = task[28]
         self['tm_transformation'] = task[29]
         self['tm_arguments'] = task[30]

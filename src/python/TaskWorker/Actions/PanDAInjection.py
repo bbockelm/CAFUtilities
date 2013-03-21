@@ -11,6 +11,7 @@ from TaskWorker.WorkerExceptions import PanDAIdException, PanDAException
 import time
 import urllib2
 import commands
+import traceback
 
 
 class PanDAInjection(PanDAAction):
@@ -34,7 +35,7 @@ class PanDAInjection(PanDAAction):
         self.logger.debug('Single PanDA injection resulted in %d distinct jobsets and %d jobdefs.' % (len(jobsetdef), sum([len(jobsetdef[k]) for k in jobsetdef])))
         return jobsetdef
 
-    def makeSpecs(self, task, jobgroup, site, jobset, jobdef):
+    def makeSpecs(self, task, jobgroup, site, jobset, jobdef, startjobid, basejobname):
         """Building the specs
 
         :arg TaskWorker.DataObject.Task task: the task to work on
@@ -42,20 +43,22 @@ class PanDAInjection(PanDAAction):
         :arg str site: the borkered site where to run the jobs
         :arg int jobset: the PanDA jobset corresponding to the current task
         :arg int jobdef: the PanDA jobdef where to append the current jobs --- not used
+        :arg int startjobid: jobs need to have an incremental index, using this to have
+                             unique ids in the whole task
+        :arg str basejobname: common string between all the jobs in their job name
         :return: the list of job sepcs objects."""
         PandaServerInterface.refreshSpecs()
         pandajobspec = []
-        basejobname = "%s" % commands.getoutput('uuidgen')
-        i = 0
+        i = startjobid
         for job in jobgroup.jobs:
             #if i > 10:
             #    break
             jobname = "%s-%d" %(basejobname, i)
-            pandajobspec.append(self.createJobSpec(task, job, jobset, jobdef, site, jobname))
+            pandajobspec.append(self.createJobSpec(task, job, jobset, jobdef, site, jobname, i))
             i += 1
-        return pandajobspec
+        return pandajobspec, i
 
-    def createJobSpec(self, task, job, jobset, jobdef, site, jobname):
+    def createJobSpec(self, task, job, jobset, jobdef, site, jobname, jobid):
         """Create a spec for one job
 
         :arg TaskWorker.DataObject.Task task: the task to work on
@@ -87,7 +90,17 @@ class PanDAInjection(PanDAAction):
             infilestring += '%s,' % inputfile['lfn']
         infilestring = infilestring[:-1]
 
-        execstring = "CMSSW.sh %s %d %s '%s' %s" % (pandajob.jobName, 1, task['tm_job_sw'], infilestring, task['tm_user_sandbox'])
+        outfilestring = ''                                                                                                                                                                                  
+        for outputfile in task['tm_outfiles']:
+            outfilestring += '%s,' % outputfile
+        for outputfile in task['tm_tfile_outfiles']:
+            outfilestring += '%s,' % outputfile
+        for outputfile in task['tm_edm_outfiles']:
+            outfilestring += '%s,' % outputfile
+        outfilestring = outfilestring[:-1]
+
+        execstring = "CMSSW.sh %d %d %s %s '%s' '%s' '%s' '%s'" % (jobid, 1, task['tm_job_sw'], task['tm_job_arch'], infilestring,
+                                                                   task['tm_data_runs'], task['tm_user_sandbox'], outfilestring)
 
         pandajob.jobParameters += '-p "%s" ' % urllib2.quote(execstring)
         pandajob.jobParameters += '--sourceURL %s ' % task['tm_cache_url']
@@ -119,33 +132,38 @@ class PanDAInjection(PanDAAction):
         results = []
         jobset = None
         jobdef = None
+        startjobid = 0
+        basejobname = "%s" % commands.getoutput('uuidgen')
         for jobgroup in args[0]:
             jobs, site = jobgroup.result
             blocks = [infile['block'] for infile in jobs.jobs[0]['input_files'] if infile['block']]
+            # now try/except everything, then need to put the code in smaller try/except cages
+            # note: there is already an outer try/except for every action and for the whole handler
             try:
-                jobsetdef = self.inject(kwargs['task'], self.makeSpecs(kwargs['task'], jobs, site, jobset, jobdef))
-                if len(jobsetdef) == 1:
-                    outjobset = jobsetdef.keys()[0]
-                    outjobdefs = jobsetdef[outjobset]
+                jobgroupspecs, startjobid = self.makeSpecs(kwargs['task'], jobs, site, jobset, jobdef, startjobid, basejobname)
+                jobsetdef = self.inject(kwargs['task'], jobgroupspecs)
+                outjobset = jobsetdef.keys()[0]
+                outjobdefs = jobsetdef[outjobset]
 
-                    if outjobset is None:
-                        msg = "Cannot retrieve the job set id for task %s " %kwargs['task']
-                        raise PanDAException(msg)
-                    elif jobset is None:
-                        jobset = outjobset
-                    elif not outjobset == jobset:
-                        msg = "Task %s has jobgroups with different jobsets: %d and %d" %(kwargs['task'], outjobset, jobset)
-                        raise PanDAIdException(msg)
-                    else:
-                        pass
+                if outjobset is None:
+                    msg = "Cannot retrieve the job set id for task %s " %kwargs['task']
+                    raise PanDAException(msg)
+                elif jobset is None:
+                    jobset = outjobset
+                elif not outjobset == jobset:
+                    msg = "Task %s has jobgroups with different jobsets: %d and %d" %(kwargs['task'], outjobset, jobset)
+                    raise PanDAIdException(msg)
+                else:
+                    pass
 
-                    for jd in outjobdefs:
-                        addJobGroup(kwargs['task']['tm_taskname'], jd, "Submitted", ",".join(blocks), None)
-                    setInjectedTasks(kwargs['task']['tm_taskname'], "Submitted", outjobset)
-                    results.append(Result(task=kwargs['task'], result=jobsetdef))
+                for jd in outjobdefs:
+                    addJobGroup(kwargs['task']['tm_taskname'], jd, "Submitted", ",".join(blocks), None)
+                setInjectedTasks(kwargs['task']['tm_taskname'], "Submitted", outjobset)
+                results.append(Result(task=kwargs['task'], result=jobsetdef))
             except Exception, exc:
                 msg = "Problem %s injecting job group from task %s reading data from blocks %s" % (str(exc), kwargs['task'], ",".join(blocks))
                 self.logger.error(msg)
+                self.logger.error(str(traceback.format_exc()))
                 addJobGroup(kwargs['task']['tm_taskname'], None, "Failed", ",".join(blocks), str(exc))
                 results.append(Result(task=kwargs['task'], warn=msg))
         if not jobset:
