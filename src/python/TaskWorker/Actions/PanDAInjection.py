@@ -23,7 +23,7 @@ class PanDAInjection(PanDAAction):
            :arg TaskWorker.DataObject.Task task: the task to work on
            :arg list taskbuffer.JobSpecs pandajobspecs: the list of specs to inject
            :return: dictionary containining the injection resulting id's."""
-        #pandajobspecs = pandajobspecs[0:3]
+        #pandajobspecs = pandajobspecs[0:2]
         status, injout = PandaServerInterface.submitJobs(pandajobspecs, task['tm_user_dn'], task['tm_user_vo'], task['tm_user_group'], task['tm_user_role'], True)
         self.logger.info('PanDA submission exit code: %s' % status)
         jobsetdef = {}
@@ -90,13 +90,41 @@ class PanDAInjection(PanDAAction):
             infilestring += '%s,' % inputfile['lfn']
         infilestring = infilestring[:-1]
 
-        outfilestring = ''                                                                                                                                                                                  
+        def outFileSpec(of=None, log=False):
+            """Local routine to create an FileSpec for the an job output/log file
+
+               :arg str of: output file base name
+               :return: FileSpec object for the output file."""
+            outfile = FileSpec()
+            if log:
+                outfile.lfn = "%s.job.log_%d.tgz" % (pandajob.jobName, jobid)
+                outfile.type = 'log'
+            else:
+                outfile.lfn = '%s_%d%s' %(os.path.splitext(of)[0], jobid, os.path.splitext(of)[1])
+                outfile.type = 'output'
+            outfile.destinationDBlock = pandajob.destinationDBlock
+            outfile.destinationSE = task['tm_asyncdest']
+            outfile.dataset = pandajob.destinationDBlock
+            return outfile
+
+        pandajob.addFile(outFileSpec(log=True))
+        outjobpar = {}
+        outfilestring = ''
         for outputfile in task['tm_outfiles']:
             outfilestring += '%s,' % outputfile
+            filespec = outFileSpec(outfile)
+            pandajob.addFile(filespec)
+            outjobpar['outputfile'] = outfile.lfn
         for outputfile in task['tm_tfile_outfiles']:
             outfilestring += '%s,' % outputfile
+            filespec = outFileSpec(outfile)
+            pandajob.addFile(filespec)
+            outjobpar['outputfile'] = outfile.lfn
         for outputfile in task['tm_edm_outfiles']:
             outfilestring += '%s,' % outputfile
+            filespec = outFileSpec(outfile)
+            pandajob.addFile(filespec)
+            outjobpar['outputfile'] = outfile.lfn
         outfilestring = outfilestring[:-1]
 
         execstring = "CMSSW.sh %d %d %s %s '%s' '%s' '%s' '%s'" % (jobid, 1, task['tm_job_sw'], task['tm_job_arch'], infilestring,
@@ -106,24 +134,8 @@ class PanDAInjection(PanDAAction):
         pandajob.jobParameters += '--sourceURL %s ' % task['tm_cache_url']
         pandajob.jobParameters += '-a %s ' % task['tm_user_sandbox']
         pandajob.jobParameters += '-r . '
-        pandajob.jobParameters += '-o "{%s: %s}" ' % ("'outfile.root'", "'outfilehassen.root'")
+        pandajob.jobParameters += '-o "%s" ' % str(outjobpar)
         pandajob.jobParameters += 'parametroTest'
-
-        logfile = FileSpec()
-        logfile.lfn = "%s.job.log.tgz" % pandajob.jobName
-        logfile.destinationDBlock = pandajob.destinationDBlock
-        logfile.destinationSE = task['tm_asyncdest']
-        logfile.dataset = pandajob.destinationDBlock
-        logfile.type = 'log'
-        pandajob.addFile(logfile)
-
-        outfile = FileSpec()
-        outfile.lfn = "outfilehassen.root" 
-        outfile.destinationDBlock = pandajob.destinationDBlock
-        outfile.destinationSE = task['tm_asyncdest']
-        outfile.dataset = pandajob.destinationDBlock
-        outfile.type = 'output'
-        pandajob.addFile(outfile)
 
         return pandajob
 

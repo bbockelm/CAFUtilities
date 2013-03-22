@@ -139,7 +139,7 @@ class Worker(object):
         """Verifies if there are any finished jobs in the output queue
 
            :return Result: the output of the work completed."""
-        if len(self.working.keys()) > 0:
+        if len(self.working.keys()) == 0:
             return []
         allout = []
         self.logger.info("%d work on going, checking if some has finished" % len(self.working.keys()))
