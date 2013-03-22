@@ -6,7 +6,7 @@ API for creating a new request in the database
 
 """
 import logging
-import CAFUtilities.TaskDB.Connection as DBConnect
+import TaskDB.Connection as DBConnect
 
 def createTask(taskName, panda_jobset_id, tm_task_status, tm_task_failure, \
                tm_job_sw, tm_job_arch, tm_input_dataset, tm_site_whitelist, tm_site_blacklist, tm_split_algo, \

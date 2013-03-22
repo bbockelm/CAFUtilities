@@ -38,7 +38,7 @@ class Create(DBCreator):
         tm_start_time TIMESTAMP,
         tm_start_injection TIMESTAMP,
         tm_end_injection TIMESTAMP,
-        tm_task_failure VARCHAR(255),
+        tm_task_failure VARCHAR2(4000),
         tm_job_sw VARCHAR(255) NOT NULL,
         tm_job_arch VARCHAR(255),
         tm_input_dataset VARCHAR(255),
@@ -73,7 +73,7 @@ class Create(DBCreator):
         panda_jobdef_id NUMBER(11),
         panda_jobdef_status VARCHAR(255) NOT NULL,
         tm_data_blocks VARCHAR(255),
-        panda_jobgroup_failure VARCHAR(255),
+        panda_jobgroup_failure VARCHAR2(4000),
         UNIQUE(panda_jobdef_id),
         FOREIGN KEY(tm_taskname) references
             tasks(tm_taskname)

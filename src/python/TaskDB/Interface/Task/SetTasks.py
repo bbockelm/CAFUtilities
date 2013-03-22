@@ -3,7 +3,7 @@
 _SetTasks_
 """
 import logging
-import CAFUtilities.TaskDB.Connection as DBConnect
+import TaskDB.Connection as DBConnect
 
 def setStatusTask(taskName, status):
     """
