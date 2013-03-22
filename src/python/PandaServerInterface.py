@@ -422,7 +422,7 @@ def runBrokerage(user, vo, group, role, sites,
         return EC_Failed,None
 
 # get PandaIDs for a JobID
-def getPandIDsWithJobID(self,jobID,user,vo,group,role,dn=None,nJobs=0,verbose=False):
+def getPandIDsWithJobID(jobID,user,vo,group,role,dn=None,nJobs=0,verbose=False):
     # instantiate curl
     curl = _Curl()
     curl.sslCert = userCertFile(user, vo, group, role)
