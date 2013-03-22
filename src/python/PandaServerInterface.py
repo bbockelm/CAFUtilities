@@ -12,8 +12,10 @@ import cPickle as pickle
 import xml.dom.minidom
 import socket
 import tempfile
-
+import logging
 from hashlib import sha1
+
+LOGGER = logging.getLogger(__name__)
 
 # configuration
 """
@@ -32,6 +34,7 @@ baseURLSSL = 'https://pandaserver.cern.ch:25443/server/panda'
 baseURLCSRVSSL = "https://voatlas178.cern.ch:25443/server/panda"
 baseURLSUB     = "http://pandaserver.cern.ch:25080/trf/user"
 
+
 # exit code
 EC_Failed = 255
 
@@ -39,12 +42,12 @@ globalTmpDir = ''
 
 def userCertFile(userDN, vo, group, role):
     x509 = os.environ.get('X509_USER_PROXY', '')
-    print x509   
+    LOGGER.debug(x509)
     #x509 = "/tmp/%s" % sha1( userDN + vo + group + role ).hexdigest()
     if os.access(x509,os.R_OK):
         return x509
-    print "No valid grid proxy certificate found"
-    print "Looking for proxy certificate in: %s" % x509
+    LOGGER.debug("No valid grid proxy certificate found")
+    LOGGER.debug("Looking for proxy certificate in: %s" % x509)
 
 def _x509():
     # see X509_USER_PROXY
@@ -58,7 +61,7 @@ def _x509():
         return x509
     # no valid proxy certificate
     # FIXME
-    print "No valid grid proxy certificate found"
+    LOGGER.debug("No valid grid proxy certificate found")
     return ''
 
 
@@ -128,8 +131,8 @@ class _Curl:
         com += ' %s' % url
         # execute
         if self.verbose:
-            print com
-            print strData[:-1]
+            LOGGER.debug(com)
+            LOGGER.debug(strData[:-1])
         s,o = commands.getstatusoutput(com)
         if o != '\x00':
             try:
@@ -142,7 +145,7 @@ class _Curl:
         os.remove(tmpName)
         ret = self.convRet(ret)
         if self.verbose:
-            print ret
+            LOGGER.debug(ret)
         return ret
 
     def post(self,url,data,rucioAccount=False):
@@ -181,8 +184,8 @@ class _Curl:
         com += ' %s' % url
         # execute
         if self.verbose:
-            print com
-            print strData[:-1]
+            LOGGER.debug(com)
+            LOGGER.debug(strData[:-1])
         s,o = commands.getstatusoutput(com)
         #print s,o
         if o != '\x00':
@@ -196,7 +199,7 @@ class _Curl:
         os.remove(tmpName)
         ret = self.convRet(ret)
         if self.verbose:
-            print ret
+            LOGGER.debug(ret)
         return ret
 
     # PUT method
@@ -217,12 +220,12 @@ class _Curl:
             com += ' -F "%s=@%s"' % (key,data[key])
         com += ' %s' % url
         if self.verbose:
-            print com
+            LOGGER.debug(com)
         # execute
         ret = commands.getstatusoutput(com)
         ret = self.convRet(ret)
         if self.verbose:
-            print ret
+            LOGGER.debug(ret)
         return ret
 
 
@@ -257,7 +260,7 @@ def getSiteSpecs(siteType=None):
     except:
         type, value, traceBack = sys.exc_info()
         errStr = "ERROR getSiteSpecs : %s %s" % (type,value)
-        print errStr
+        LOGGER.error(errStr)
         return EC_Failed,output+'\n'+errStr
 
 
@@ -273,7 +276,7 @@ def getCloudSpecs():
     except:
         type, value, traceBack = sys.exc_info()
         errStr = "ERROR getCloudSpecs : %s %s" % (type,value)
-        print errStr
+        LOGGER.error(errStr)
         return EC_Failed,output+'\n'+errStr
 
 # refresh spacs at runtime
@@ -284,12 +287,12 @@ def refreshSpecs():
     # get Panda Sites
     tmpStat,PandaSites = getSiteSpecs()
     if tmpStat != 0:
-        print "ERROR : cannot get Panda Sites"
+        LOGGER.error("ERROR : cannot get Panda Sites")
         sys.exit(EC_Failed)
     # get cloud info
     tmpStat,PandaClouds = getCloudSpecs()
     if tmpStat != 0:
-        print "ERROR : cannot get Panda Clouds"
+        LOGGER.error("ERROR : cannot get Panda Clouds")
         sys.exit(EC_Failed)
 
 
@@ -318,16 +321,16 @@ def submitJobs(jobs, user, vo, group, role, workflow, verbose=False):
     status,output = curl.post(url,data)
     #print 'SUBMITJOBS CALL --> status: %s - output: %s' % (status, output)
     if status!=0:
-        print '=============================='
-        print 'submitJobs output: %s' % output
-        print 'submitJobs status: %s' % status
-        print '=============================='
+        LOGGER.error('==============================')
+        LOGGER.error('submitJobs output: %s' % output)
+        LOGGER.error('submitJobs status: %s' % status)
+        LOGGER.error('==============================')
         return status,None
     try:
         return status,pickle.loads(output)
     except:
         type, value, traceBack = sys.exc_info()
-        print "ERROR submitJobs : %s %s" % (type,value)
+        LOGGER.error("ERROR submitJobs : %s %s" % (type,value))
         return EC_Failed,None
 
 
@@ -414,6 +417,6 @@ def runBrokerage(user, vo, group, role, sites,
             return status,outputPK
     except:
         type, value, traceBack = sys.exc_info()
-        print output
-        print "ERROR runBrokerage : %s %s" % (type,value)
+        LOGGER.error(output)
+        LOGGER.error("ERROR runBrokerage : %s %s" % (type,value))
         return EC_Failed,None
