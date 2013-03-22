@@ -436,11 +436,11 @@ def getPandIDsWithJobID(jobID,user,vo,group,role,dn=None,nJobs=0,verbose=False):
         data['dn'] = dn
     status,output = curl.post(url,data)
     if status!=0:
-        print output
+        LOGGER.debug(output)
         return status,None
     try:
         return status,pickle.loads(output)
     except:
         type, value, traceBack = sys.exc_info()
-        print "ERROR getPandIDsWithJobID : %s %s" % (type,value)
+        LOGGER.error("ERROR getPandIDsWithJobID : %s %s" % (type,value))
         return EC_Failed,None
