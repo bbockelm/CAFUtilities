@@ -2,7 +2,7 @@
 """
 _ID_
 
-Get a physics group ID within the request system
+Given the id of a task (its taskname) get information about it
 
 """
 from WMCore.Database.DBFormatter import DBFormatter
@@ -15,6 +15,10 @@ class ID(DBFormatter):
     Get a group ID from the group name
 
     """
+
+    sql = "SELECT tm_taskname, tm_task_status, tm_user_role, tm_user_group,"
+    sql += "tm_task_failure FROM tasks WHERE tm_taskname=:taskname"
+
     def execute(self, taskname, conn = None, trans = False):
         """
         _execute_
@@ -22,8 +26,6 @@ class ID(DBFormatter):
         Retrieve the ID of the user defined by HN username
 
         """
-        self.sql = "SELECT tm_taskname FROM tasks "
-        self.sql += "WHERE tm_taskname=:taskname"
         binds = {"taskname": taskname}
         result = self.dbi.processData(self.sql, binds,
                          conn = conn, transaction = trans)
