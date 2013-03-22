@@ -6,7 +6,7 @@ from taskbuffer.FileSpec import FileSpec
 
 from TaskWorker.Actions.PanDAAction import PanDAAction
 from TaskWorker.DataObjects.Result import Result
-from TaskWorker.WorkerExceptions import PanDAIdException, PanDAException
+from TaskWorker.WorkerExceptions import PanDAIdException, PanDAException, NoAvailableSite
 
 import time
 import urllib2
@@ -23,7 +23,7 @@ class PanDAInjection(PanDAAction):
            :arg TaskWorker.DataObject.Task task: the task to work on
            :arg list taskbuffer.JobSpecs pandajobspecs: the list of specs to inject
            :return: dictionary containining the injection resulting id's."""
-        #pandajobspecs = pandajobspecs[0:2]
+        pandajobspecs = pandajobspecs[0:2]
         status, injout = PandaServerInterface.submitJobs(pandajobspecs, task['tm_user_dn'], task['tm_user_vo'], task['tm_user_group'], task['tm_user_role'], True)
         self.logger.info('PanDA submission exit code: %s' % status)
         jobsetdef = {}
@@ -107,23 +107,26 @@ class PanDAInjection(PanDAAction):
             outfile.dataset = pandajob.destinationDBlock
             return outfile
 
-        pandajob.addFile(outFileSpec(log=True))
+        alloutfiles = []
         outjobpar = {}
         outfilestring = ''
         for outputfile in task['tm_outfiles']:
             outfilestring += '%s,' % outputfile
             filespec = outFileSpec(outfile)
-            pandajob.addFile(filespec)
+            alloutfiles.add(filespec)
+            #pandajob.addFile(filespec)
             outjobpar['outputfile'] = outfile.lfn
         for outputfile in task['tm_tfile_outfiles']:
             outfilestring += '%s,' % outputfile
             filespec = outFileSpec(outfile)
-            pandajob.addFile(filespec)
+            alloutfiles.add(filespec)
+            #pandajob.addFile(filespec)
             outjobpar['outputfile'] = outfile.lfn
         for outputfile in task['tm_edm_outfiles']:
             outfilestring += '%s,' % outputfile
             filespec = outFileSpec(outfile)
-            pandajob.addFile(filespec)
+            alloutfiles.add(filespec)
+            #pandajob.addFile(filespec)
             outjobpar['outputfile'] = outfile.lfn
         outfilestring = outfilestring[:-1]
 
@@ -136,6 +139,10 @@ class PanDAInjection(PanDAAction):
         pandajob.jobParameters += '-r . '
         pandajob.jobParameters += '-o "%s" ' % str(outjobpar)
         pandajob.jobParameters += 'parametroTest'
+
+        pandajob.addFile(outFileSpec(log=True))
+        for filetoadd in alloutfiles:
+            pandajob.addFile(filetoadd)
 
         return pandajob
 
@@ -152,6 +159,10 @@ class PanDAInjection(PanDAAction):
             # now try/except everything, then need to put the code in smaller try/except cages
             # note: there is already an outer try/except for every action and for the whole handler
             try:
+                if not site:
+                    msg = "No site available for submission of task %s" %(kwargs['task'])
+                    raise NoAvailableSite(msg)
+
                 jobgroupspecs, startjobid = self.makeSpecs(kwargs['task'], jobs, site, jobset, jobdef, startjobid, basejobname)
                 jobsetdef = self.inject(kwargs['task'], jobgroupspecs)
                 outjobset = jobsetdef.keys()[0]

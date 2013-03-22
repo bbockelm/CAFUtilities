@@ -20,6 +20,11 @@ class PanDABrokerage(PanDAAction):
             self.logger.info( str(availablesites))
             fixedsites = set(self.config.Sites.available)
             availablesites = list( set(availablesites) & fixedsites )
+            if len(availablesites) == 0:
+                msg = "No site available before brokering, will skip injection"
+                self.logger.error(msg)
+                results.append(Result(task=kwargs['task'], result=(jgroup, None), err=msg))
+                continue
             self.logger.info("Asking best site to PanDA between %s" % str(availablesites))
             selectedsite = PandaServerInterface.runBrokerage(kwargs['task']['tm_user_dn'],
                                                               kwargs['task']['tm_user_vo'],
@@ -28,10 +33,37 @@ class PanDABrokerage(PanDAAction):
                                                               ['ANALY_'+el for el in availablesites])[-1]
             self.logger.info("Choosed site after brokering " +str(selectedsite))
             if not selectedsite:
-                msg = "No site available after brokering, skipping injection"
+                msg = "No site available after brokering, will skip injection"
                 self.logger.error(msg)
-                ##TODO: handle this issue
-                results.append(Result(task=kwargs['task'], err=msg))
+                results.append(Result(task=kwargs['task'], result=(jgroup, None), err=msg))
+                continue
             else:
                 results.append(Result(task=kwargs['task'], result=(jgroup, selectedsite)))
         return results
+
+if __name__ == '__main__':
+    ## here I show while I love Python's duck typing
+    import collections
+    task = {'tm_user_dn': '/DC=ch/DC=cern/OU=Organic Units/OU=Users/CN=mcinquil/CN=660800/CN=Mattia Cinquilli',
+            'tm_user_vo': 'cms',
+            'tm_user_group': '',
+            'tm_user_role': '',
+            'tm_site_blacklist': [],
+            'tm_site_whitelist': [],}
+    JobGroup = collections.namedtuple('JobGroup', 'jobs')
+    jg = JobGroup(jobs=[{'input_files': [{'locations': ['T2_CH_CERN']}]}])
+    Sites = collections.namedtuple('Sites', 'available')
+    Config = collections.namedtuple('Config', 'Sites')
+    sites = Sites(available=['T2_CH_CERN'])
+    cfg = Config(Sites=sites)
+    pb = PanDABrokerage(cfg)
+    result = pb.execute([jg], task=task)
+    for r in result:
+        print r
+
+    sites = Sites(available=[])
+    cfg = Config(Sites=sites)
+    pb = PanDABrokerage(cfg)
+    result = pb.execute([jg], task=task)
+    for r in result:
+        print r
