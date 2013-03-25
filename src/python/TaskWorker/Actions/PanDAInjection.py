@@ -23,7 +23,7 @@ class PanDAInjection(PanDAAction):
            :arg TaskWorker.DataObject.Task task: the task to work on
            :arg list taskbuffer.JobSpecs pandajobspecs: the list of specs to inject
            :return: dictionary containining the injection resulting id's."""
-        pandajobspecs = pandajobspecs[0:2]
+        #pandajobspecs = pandajobspecs[0:2]
         status, injout = PandaServerInterface.submitJobs(pandajobspecs, task['tm_user_dn'], task['tm_user_vo'], task['tm_user_group'], task['tm_user_role'], True)
         self.logger.info('PanDA submission exit code: %s' % status)
         jobsetdef = {}
