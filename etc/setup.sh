@@ -10,7 +10,9 @@ SOURCEDIR=$STARTDIR/$WORKDIR/source
 LOGDIR=$WORKDIR/logs/
 LOGFILE=$LOGDIR/TaskWorker.log
 ROTATECONF=rotatesplitter
+CACHEDIR=$WORKDIR/state
 
+mkdir -p $CACHEDIR
 mkdir -p $LOGDIR
 mkdir -p $SOURCEDIR
 touch $LOGFILE
@@ -55,6 +57,7 @@ export STARTDIR=$STARTDIR
 export WORKDIR=$WORKDIR
 export SOURCEDIR=$SOURCEDIR
 export X509_USER_PROXY=$STARTDIR/$WORKDIR/auth/proxy
+export WMCORE_CACHE_DIR=$STARTDIR/$CACHEDIR
 source $STARTDIR/$WORKDIR/current/apps/wmagent/etc/profile.d/dependencies-setup.sh
 export PYTHONPATH=$SOURCEDIR/CAFTaskWorker/src/python/:$SOURCEDIR/CAFUtilities/src/python/:$SOURCEDIR/WMCore/src/python/:\$PYTHONPATH" > $STARTDIR/env.sh
 echo ""
