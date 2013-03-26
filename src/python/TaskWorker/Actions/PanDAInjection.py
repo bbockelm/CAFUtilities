@@ -12,6 +12,7 @@ import time
 import urllib2
 import commands
 import traceback
+import os
 
 
 class PanDAInjection(PanDAAction):
@@ -69,7 +70,7 @@ class PanDAInjection(PanDAAction):
         :arg str jobname: the job name
         :return: the sepc object."""
         datasetname = 'user/%s/%s' % (task['tm_username'], task['tm_publish_name'])
-        
+
         pandajob = JobSpec()
         ## always setting a job definition ID
         pandajob.jobDefinitionID = jobdef if jobdef else -1
@@ -112,22 +113,22 @@ class PanDAInjection(PanDAAction):
         outfilestring = ''
         for outputfile in task['tm_outfiles']:
             outfilestring += '%s,' % outputfile
-            filespec = outFileSpec(outfile)
-            alloutfiles.add(filespec)
+            filespec = outFileSpec(outputfile)
+            alloutfiles.append(filespec)
             #pandajob.addFile(filespec)
-            outjobpar['outputfile'] = outfile.lfn
+            outjobpar[outputfile] = filespec.lfn
         for outputfile in task['tm_tfile_outfiles']:
             outfilestring += '%s,' % outputfile
-            filespec = outFileSpec(outfile)
-            alloutfiles.add(filespec)
+            filespec = outFileSpec(outfputile)
+            alloutfiles.append(filespec)
             #pandajob.addFile(filespec)
-            outjobpar['outputfile'] = outfile.lfn
+            outjobpar[outputfile] = filespec.lfn
         for outputfile in task['tm_edm_outfiles']:
             outfilestring += '%s,' % outputfile
-            filespec = outFileSpec(outfile)
-            alloutfiles.add(filespec)
+            filespec = outFileSpec(outputfile)
+            alloutfiles.append(filespec)
             #pandajob.addFile(filespec)
-            outjobpar['outputfile'] = outfile.lfn
+            outjobpar[outputfile] = filespec.lfn
         outfilestring = outfilestring[:-1]
 
         execstring = "CMSSW.sh %d %d %s %s '%s' '%s' '%s' '%s'" % (jobid, 1, task['tm_job_sw'], task['tm_job_arch'], infilestring,
