@@ -13,6 +13,7 @@ import urllib2
 import commands
 import traceback
 import os
+import json
 
 
 class PanDAInjection(PanDAAction):
@@ -84,12 +85,6 @@ class PanDAInjection(PanDAAction):
         pandajob.cloud = PandaServerInterface.PandaSites[pandajob.computingSite]['cloud']
         pandajob.destinationSE = 'local'
         pandajob.transformation = '%s/%s' % (PandaServerInterface.baseURLSUB, task['tm_transformation'])
-        pandajob.jobParameters = '-j "" '
-
-        infilestring = ''
-        for inputfile in job['input_files']:
-            infilestring += '%s,' % inputfile['lfn']
-        infilestring = infilestring[:-1]
 
         def outFileSpec(of=None, log=False):
             """Local routine to create an FileSpec for the an job output/log file
@@ -131,15 +126,20 @@ class PanDAInjection(PanDAAction):
             outjobpar[outputfile] = filespec.lfn
         outfilestring = outfilestring[:-1]
 
-        execstring = "CMSSW.sh %d %d %s %s '%s' '%s' '%s' '%s'" % (jobid, 1, task['tm_job_sw'], task['tm_job_arch'], infilestring,
-                                                                   task['tm_data_runs'], task['tm_user_sandbox'], outfilestring)
+        infiles = []
+        for inputfile in job['input_files']:
+            infiles.append( inputfile['lfn'] )
 
-        pandajob.jobParameters += '-p "%s" ' % urllib2.quote(execstring)
-        pandajob.jobParameters += '--sourceURL %s ' % task['tm_cache_url']
-        pandajob.jobParameters += '-a %s ' % task['tm_user_sandbox']
-        pandajob.jobParameters += '-r . '
-        pandajob.jobParameters += '-o "%s" ' % str(outjobpar)
-        pandajob.jobParameters += 'parametroTest'
+        pandajob.jobParameters    = ''
+        pandajob.jobParameters    += '-a %s ' % task['tm_user_sandbox']
+        pandajob.jobParameters    += '--sourceURL %s ' % task['tm_cache_url']
+        pandajob.jobParameters    += '--jobNumber=%s ' % jobid
+        pandajob.jobParameters    += '--cmsswVersion=%s ' % task['tm_job_sw']
+        pandajob.jobParameters    += '--scramArch=%s ' % task['tm_job_arch']
+        pandajob.jobParameters    += '--inputFile=\'%s\' ' % json.dumps(infiles)
+        pandajob.jobParameters    += '--lumiMask=\'%s\' ' % json.dumps(task['tm_data_runs'])
+        pandajob.jobParameters    += '-o "%s" ' % str(outjobpar)
+        #job.jobParameters    += '%s ' % str(wfid) #TODO Is it necessary? Why has it been removed?
 
         pandajob.addFile(outFileSpec(log=True))
         for filetoadd in alloutfiles:
