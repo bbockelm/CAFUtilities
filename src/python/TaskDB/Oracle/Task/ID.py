@@ -16,7 +16,7 @@ class ID(DBFormatter):
 
     """
 
-    sql = "SELECT tm_taskname, tm_task_status, tm_user_role, tm_user_group,"
+    sql = "SELECT tm_taskname, panda_jobset_id, tm_task_status, tm_user_role, tm_user_group,"
     sql += "tm_task_failure FROM tasks WHERE tm_taskname=:taskname"
 
     def execute(self, taskname, conn = None, trans = False):
