@@ -72,7 +72,7 @@ class Create(DBCreator):
         tm_taskname VARCHAR(255) NOT NULL,
         panda_jobdef_id NUMBER(11),
         panda_jobdef_status VARCHAR(255) NOT NULL,
-        tm_data_blocks VARCHAR(255),
+        tm_data_blocks VARCHAR(4000),
         panda_jobgroup_failure VARCHAR2(4000),
         UNIQUE(panda_jobdef_id),
         FOREIGN KEY(tm_taskname) references
