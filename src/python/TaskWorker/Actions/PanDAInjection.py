@@ -137,7 +137,7 @@ class PanDAInjection(PanDAAction):
         pandajob.jobParameters    += '--cmsswVersion=%s ' % task['tm_job_sw']
         pandajob.jobParameters    += '--scramArch=%s ' % task['tm_job_arch']
         pandajob.jobParameters    += '--inputFile=\'%s\' ' % json.dumps(infiles)
-        pandajob.jobParameters    += '--lumiMask=\'%s\' ' % json.dumps(task['tm_data_runs'])
+        pandajob.jobParameters    += '--lumiMask=\'%s\' ' % json.dumps(job['mask']['runAndLumis'])
         pandajob.jobParameters    += '-o "%s" ' % str(outjobpar)
         #job.jobParameters    += '%s ' % str(wfid) #TODO Is it necessary? Why has it been removed?
 
