@@ -279,7 +279,7 @@ def getCloudSpecs():
         LOGGER.error(errStr)
         return EC_Failed,output+'\n'+errStr
 
-# refresh spacs at runtime
+# refresh specs
 def refreshSpecs():
 
     global PandaSites
@@ -294,10 +294,6 @@ def refreshSpecs():
     if tmpStat != 0:
         LOGGER.error("ERROR : cannot get Panda Clouds")
         sys.exit(EC_Failed)
-
-
-# initialize spacs
-refreshSpecs()
 
 
 # submit jobs
