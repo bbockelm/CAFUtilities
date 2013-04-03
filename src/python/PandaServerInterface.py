@@ -440,3 +440,24 @@ def getPandIDsWithJobID(jobID,user,vo,group,role,dn=None,nJobs=0,verbose=False):
         type, value, traceBack = sys.exc_info()
         LOGGER.error("ERROR getPandIDsWithJobID : %s %s" % (type,value))
         return EC_Failed,None
+
+# kill jobs
+def killJobs(user, vo, group, role, ids, code=None, verbose=True, useMailAsID=False):
+    # serialize
+    strIDs = pickle.dumps(ids)
+    # instantiate curl
+    curl = _Curl()
+    curl.sslCert = userCertFile(user, vo, group, role)
+    curl.sslKey  = userCertFile(user, vo, group, role)
+    curl.verbose = verbose
+    # execute
+    url = baseURLSSL + '/killJobs'
+    data = {'ids':strIDs,'code':code,'useMailAsID':useMailAsID}
+    status,output = curl.post(url,data)
+    try:
+        return status,pickle.loads(output)
+    except:
+        type, value, traceBack = sys.exc_info()
+        errStr = "ERROR killJobs : %s %s" % (type,value)
+        print errStr
+        return EC_Failed,output+'\n'+errStr
