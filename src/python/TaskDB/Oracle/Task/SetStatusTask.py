@@ -4,10 +4,9 @@
 from WMCore.Database.DBFormatter import DBFormatter
 
 class SetStatusTask(DBFormatter):
+    sql = "UPDATE tasks SET tm_task_status = upper(:status) WHERE tm_taskname = :taskname"
 
     def execute(self, taskName, status, conn = None, transaction = False):
-
-        self.sql = "UPDATE tasks SET tm_task_status = upper(:status) WHERE tm_taskname = :taskname"
         binds = {"taskname": taskName, "status": status}
         result = self.dbi.processData(self.sql, binds,
                          conn = conn, transaction = transaction)
