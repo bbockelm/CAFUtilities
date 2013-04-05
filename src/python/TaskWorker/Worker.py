@@ -8,6 +8,7 @@ from WMCore.WMInit import WMInit
 
 from TaskWorker.DataObjects.Result import Result
 from TaskWorker.WorkerExceptions import WorkerHandlerException
+import PandaServerInterface
 
 
 ## Creating configuration globals to avoid passing these around at every request
@@ -83,7 +84,12 @@ class Worker(object):
         self.inputs  = multiprocessing.Queue()
         self.results = multiprocessing.Queue()
         self.working = {}
- 
+        PandaServerInterface.initProxyParameters(WORKER_CONFIG.MyProxy.serverhostkey,\
+                                                 WORKER_CONFIG.MyProxy.serverhostcert,\
+                                                 WORKER_CONFIG.MyProxy.serverdn,\
+                                                 WORKER_CONFIG.MyProxy.uisource,\
+                                                 WORKER_CONFIG.MyProxy.credpath)
+
     def __del__(self):
         """When deleted shutting down all slaves"""
         self.end()
