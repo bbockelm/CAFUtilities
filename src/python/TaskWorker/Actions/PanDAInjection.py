@@ -84,7 +84,7 @@ class PanDAInjection(PanDAAction):
         pandajob.computingSite = site
         pandajob.cloud = PandaServerInterface.PandaSites[pandajob.computingSite]['cloud']
         pandajob.destinationSE = 'local'
-        pandajob.transformation = '%s/%s' % (PandaServerInterface.baseURLSUB, task['tm_transformation'])
+        pandajob.transformation = task['tm_transformation']
 
         def outFileSpec(of=None, log=False):
             """Local routine to create an FileSpec for the an job output/log file
