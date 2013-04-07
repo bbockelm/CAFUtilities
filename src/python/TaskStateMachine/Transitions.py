@@ -5,6 +5,11 @@ _Transitions_
 Controls what state transitions are allowed.
 """
 
+class TaskStateException(Exception):
+    """General exception to be returned in case of failures
+       for status transitions"""
+    exitcode = 9000
+
 def changeState(curr, new):
     """Verifies is the transition can be made or not.
        If yes, returns the new status name,
@@ -14,11 +19,11 @@ def changeState(curr, new):
        :str new: new status name."""
     trans = Transitions()
     if new not in trans.states():
-        raise Exception("New '%s' status is not valid" %new)
+        raise TaskStateException("New '%s' status is not valid" %new)
     if curr not in trans:
-        raise Exception("Current '%s' status is not valid" %curr)
+        raise TaskStateException("Current '%s' status is not valid" %curr)
     if new not in trans[curr]:
-        raise Exception("Transition from '%s' to '%s' is forbidden." %(curr, new))
+        raise TaskStateException("Transition from '%s' to '%s' is forbidden." %(curr, new))
     ## transition is valid
     return new
 
