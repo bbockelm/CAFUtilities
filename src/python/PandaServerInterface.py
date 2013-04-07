@@ -15,6 +15,8 @@ import tempfile
 import logging
 from hashlib import sha1
 
+from WMCore.Credential.Proxy import Proxy
+
 LOGGER = logging.getLogger(__name__)
 
 # configuration
@@ -40,27 +42,58 @@ EC_Failed = 255
 
 globalTmpDir = ''
 
+serverCert = None
+serverKey = None
+serverDN = None
+uiSource = None
+credServerPath = '/tmp'
+
+def initProxyParameters(serverkey, servercert, serverdn, uisource, credpath):
+    global serverCert, serverKey, serverDN, uiSource, credServerPath
+    serverCert, serverKey, serverDN, uiSource, credServerPath = servercert, serverkey, serverdn, uisource, credpath
+
+def retrieveUserProxy(user, vo, group, role):
+    myproxyserver = "myproxy.cern.ch"
+    defaultDelegation = { 'vo': vo,
+                          'logger': LOGGER,
+                          'myProxySvr': 'myproxy.cern.ch',
+                          'proxyValidity' : '192:00',
+                          'min_time_left' : 36000,
+                          'userDN' : user,
+                          'group' : group if group else '',
+                          'role' : role if role else '',
+                          'server_key': serverKey,
+                          'server_cert': serverCert,
+                          'serverDN': serverDN,
+                          'uisource': uiSource,
+                          'credServerPath': credServerPath,}
+    timeleftthreshold = 60 * 60 * 24
+    proxy = Proxy(defaultDelegation)
+    userproxy = proxy.getProxyFilename(serverRenewer=True)
+    if proxy.getTimeLeft(userproxy) < timeleftthreshold:
+        proxy.logonRenewMyProxy()
+        timeleft = proxy.getTimeLeft(userproxy)
+        if timeleft is None or timeleft <= 0:
+            raise RuntimeError("Impossible to retrieve proxy from %s for %s." %(defaultDelegation['myProxySvr'], defaultDelegation['userDN']))
+
+    LOGGER.debug("User proxy file path: %s" % userproxy)
+    return userproxy
+
+
 def userCertFile(userDN, vo, group, role):
-    x509 = os.environ.get('X509_USER_PROXY', '')
-    LOGGER.debug(x509)
-    #x509 = "/tmp/%s" % sha1( userDN + vo + group + role ).hexdigest()
-    if os.access(x509,os.R_OK):
-        return x509
-    LOGGER.debug("No valid grid proxy certificate found")
-    LOGGER.debug("Looking for proxy certificate in: %s" % x509)
+    userProxy = retrieveUserProxy(userDN, vo, group, role)
+    if os.access(userProxy,os.R_OK):
+        return userProxy
+    LOGGER.error("No valid grid proxy certificate found")
+    LOGGER.debug("Looking for proxy certificate in: %s" % userProxy)
 
 def _x509():
-    # see X509_USER_PROXY
     try:
         return os.environ['X509_USER_PROXY']
     except:
         pass
-    # see the default place
-    x509 = '/tmp/x509up_u%s' % os.getuid()
-    if os.access(x509,os.R_OK):
-        return x509
     # no valid proxy certificate
-    # FIXME
+    # FIXME raise exception or something?
     LOGGER.debug("No valid grid proxy certificate found")
     return ''
 
@@ -417,12 +450,21 @@ def runBrokerage(user, vo, group, role, sites,
         LOGGER.error("ERROR runBrokerage : %s %s" % (type,value))
         return EC_Failed,None
 
+
+
+#####################################################################################
+#The following two functions, getPandIDsWithJobID and killJobs, are used bye the REST
+#They do not retrieve the proxy certificate of the user with myproxy, but just use
+#what is has bee provided in the X509_USER_PROXY variable by the caller
+#####################################################################################
+
 # get PandaIDs for a JobID
+#TODO check if we can remove user, vo, group, role,
 def getPandIDsWithJobID(jobID,user,vo,group,role,dn=None,nJobs=0,verbose=False):
     # instantiate curl
     curl = _Curl()
-    curl.sslCert = userCertFile(user, vo, group, role)
-    curl.sslKey  = userCertFile(user, vo, group, role)
+    curl.sslCert = _x509()
+    curl.sslKey  = _x509()
 
     curl.verbose = verbose
     # execute
@@ -440,3 +482,25 @@ def getPandIDsWithJobID(jobID,user,vo,group,role,dn=None,nJobs=0,verbose=False):
         type, value, traceBack = sys.exc_info()
         LOGGER.error("ERROR getPandIDsWithJobID : %s %s" % (type,value))
         return EC_Failed,None
+
+# kill jobs
+#TODO check if we can remove user, vo, group, role,
+def killJobs(user, vo, group, role, ids, code=None, verbose=True, useMailAsID=False):
+    # serialize
+    strIDs = pickle.dumps(ids)
+    # instantiate curl
+    curl = _Curl()
+    curl.sslCert = _x509()
+    curl.sslKey  = _x509()
+    curl.verbose = verbose
+    # execute
+    url = baseURLSSL + '/killJobs'
+    data = {'ids':strIDs,'code':code,'useMailAsID':useMailAsID}
+    status,output = curl.post(url,data)
+    try:
+        return status,pickle.loads(output)
+    except:
+        type, value, traceBack = sys.exc_info()
+        errStr = "ERROR killJobs : %s %s" % (type,value)
+        print errStr
+        return EC_Failed,output+'\n'+errStr

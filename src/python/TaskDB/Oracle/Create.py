@@ -62,7 +62,7 @@ class Create(DBCreator):
         tm_edm_outfiles VARCHAR(255),
         tm_data_runs VARCHAR(255),
         tm_transformation VARCHAR(255) NOT NULL,
-        tm_arguments VARCHAR(255),
+        tm_arguments CLOB,
         PRIMARY KEY(tm_taskname)
         )
         """

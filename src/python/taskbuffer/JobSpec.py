@@ -32,7 +32,7 @@ class JobSpec(object):
             setattr(self,attr,None)
         # files list
         self.Files = []
-        
+
 
     # override __getattribute__ for SQL
     def __getattribute__(self,name):
