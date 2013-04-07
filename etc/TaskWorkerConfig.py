@@ -15,5 +15,13 @@ config.section_("TaskWorker")
 config.TaskWorker.polling = 60 #seconds
 config.TaskWorker.nslaves = cpu_count()
 
+#The following parameters assumes the installation in "one box" together with the REST
+config.section_("MyProxy")
+config.MyProxy.serverhostcert = '/path/to/hostcert.pem'
+config.MyProxy.serverhostkey = '/path/to/hostkey.pem'
+config.MyProxy.uisource = '/afs/cern.ch/cms/LCG/LCG-2/UI/cms_ui_env.sh'
+config.MyProxy.credpath = '/tmp'
+config.MyProxy.serverdn = '' #PLEASE SET ME!!!
+
 config.section_("Sites")
 config.Sites.available = ["T2_CH_CERN", "T2_IT_Pisa", "T1_US_FNAL", "T2_DE_DESY"]
