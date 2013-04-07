@@ -14,6 +14,12 @@ import commands
 import traceback
 import os
 import json
+import string
+import random
+
+
+# the length of the string to be appended to the every out file (before their extension)
+LFNHANGERLEN = 6
 
 
 class PanDAInjection(PanDAAction):
@@ -37,7 +43,7 @@ class PanDAInjection(PanDAAction):
         self.logger.debug('Single PanDA injection resulted in %d distinct jobsets and %d jobdefs.' % (len(jobsetdef), sum([len(jobsetdef[k]) for k in jobsetdef])))
         return jobsetdef
 
-    def makeSpecs(self, task, jobgroup, site, jobset, jobdef, startjobid, basejobname):
+    def makeSpecs(self, task, jobgroup, site, jobset, jobdef, startjobid, basejobname, lfnhanger):
         """Building the specs
 
         :arg TaskWorker.DataObject.Task task: the task to work on
@@ -56,11 +62,11 @@ class PanDAInjection(PanDAAction):
             #if i > 10:
             #    break
             jobname = "%s-%d" %(basejobname, i)
-            pandajobspec.append(self.createJobSpec(task, job, jobset, jobdef, site, jobname, i))
+            pandajobspec.append(self.createJobSpec(task, job, jobset, jobdef, site, jobname, lfnhanger, i))
             i += 1
         return pandajobspec, i
 
-    def createJobSpec(self, task, job, jobset, jobdef, site, jobname, jobid):
+    def createJobSpec(self, task, job, jobset, jobdef, site, jobname, lfnhanger, jobid):
         """Create a spec for one job
 
         :arg TaskWorker.DataObject.Task task: the task to work on
@@ -69,6 +75,8 @@ class PanDAInjection(PanDAAction):
         :arg int jobdef: the PanDA jobdef where to append the current jobs --- not used
         :arg str site: the borkered site where to run the jobs
         :arg str jobname: the job name
+        :arg str lfnhanger: the random string to be added in the output file name
+        :arg int jobid: incremental job number
         :return: the sepc object."""
         datasetname = 'user/%s/%s' % (task['tm_username'], task['tm_publish_name'])
 
@@ -93,10 +101,10 @@ class PanDAInjection(PanDAAction):
                :return: FileSpec object for the output file."""
             outfile = FileSpec()
             if log:
-                outfile.lfn = "%s.job.log_%d.tgz" % (pandajob.jobName, jobid)
+                outfile.lfn = "%s.job.log_%d_%s.tgz" % (pandajob.jobName, jobid, lfnhanger)
                 outfile.type = 'log'
             else:
-                outfile.lfn = '%s_%d%s' %(os.path.splitext(of)[0], jobid, os.path.splitext(of)[1])
+                outfile.lfn = '%s_%d_%s%s' %(os.path.splitext(of)[0], jobid, lfnhanger, os.path.splitext(of)[1])
                 outfile.type = 'output'
             outfile.destinationDBlock = pandajob.destinationDBlock
             outfile.destinationSE = task['tm_asyncdest']
@@ -154,6 +162,7 @@ class PanDAInjection(PanDAAction):
         jobdef = None
         startjobid = 0
         basejobname = "%s" % commands.getoutput('uuidgen')
+        lfnhanger = ''.join(random.choice(string.ascii_uppercase + string.digits) for x in range(LFNHANGERLEN))
         for jobgroup in args[0]:
             jobs, site = jobgroup.result
             blocks = [infile['block'] for infile in jobs.jobs[0]['input_files'] if infile['block']]
@@ -164,7 +173,7 @@ class PanDAInjection(PanDAAction):
                     msg = "No site available for submission of task %s" %(kwargs['task'])
                     raise NoAvailableSite(msg)
 
-                jobgroupspecs, startjobid = self.makeSpecs(kwargs['task'], jobs, site, jobset, jobdef, startjobid, basejobname)
+                jobgroupspecs, startjobid = self.makeSpecs(kwargs['task'], jobs, site, jobset, jobdef, startjobid, basejobname, lfnhanger)
                 jobsetdef = self.inject(kwargs['task'], jobgroupspecs)
                 outjobset = jobsetdef.keys()[0]
                 outjobdefs = jobsetdef[outjobset]
