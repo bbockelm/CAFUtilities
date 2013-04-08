@@ -1,6 +1,6 @@
 #! /bin/sh
 
-set +x
+set -x
 
 ORIGDIR=$PWD
 STARTDIR=$PWD/tmp/runtime
@@ -18,12 +18,15 @@ mkdir -p $TASKWORKERDIR
 
 pushd $STARTDIR
 
-#curl -L https://github.com/$WMCOREREPO/WMCore/archive/$WMCOREVER.tar.gz | tar zx
+curl -L https://github.com/$WMCOREREPO/WMCore/archive/$WMCOREVER.tar.gz | tar zx
 curl -L https://github.com/$TASKWORKERREPO/CAFTaskWorker/archive/$TASKWORKERVER.tar.gz | tar zx
 
-#zip -r WMCore WMCore-$WMCOREVER/src/python -i *
+pushd WMCore-$WMCOREVER/src/python
+zip -r $STARTDIR/WMCore.zip WMCore
+popd
 pushd CAFTaskWorker-$TASKWORKERVER/src/python
-zip -r TaskWorker TaskWorker
+zip -r $STARTDIR/TaskWorker.zip TaskWorker
+popd
 
 tar zcf $ORIGDIR/TaskManagerRun.tar.gz WMCore.zip TaskWorker.zip
 
