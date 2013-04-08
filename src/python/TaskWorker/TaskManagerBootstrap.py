@@ -32,11 +32,11 @@ def bootstrap():
         with open(infile, "r") as fd:
             in_args = pickle.load(fd)
 
-    ad['tm_taskname'] = classad.ExprTree("CRAB.Workflow")
-    ad['tm_split_algo'] = classad.ExprTree("CRAB.SplitAlgo")
-    ad['tm_split_args'] = classad.ExprTree("CRAB.AlgoArgs")
-    ad['tm_dbs_url'] = classad.ExprTree("CRAB.DBSUrl")
-    ad['tm_input_dataset'] = classad.ExprTree("CRAB.InputData")
+    ad['tm_taskname'] = classad.ExprTree("CRAB_Workflow")
+    ad['tm_split_algo'] = classad.ExprTree("CRAB_SplitAlgo")
+    ad['tm_split_args'] = classad.ExprTree("CRAB_AlgoArgs")
+    ad['tm_dbs_url'] = classad.ExprTree("CRAB_DBSUrl")
+    ad['tm_input_dataset'] = classad.ExprTree("CRAB_InputData")
 
     if command == "DBS":
         task = DBSDataDiscovery(*in_args)
