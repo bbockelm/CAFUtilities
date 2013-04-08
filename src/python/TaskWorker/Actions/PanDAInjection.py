@@ -43,10 +43,11 @@ class PanDAInjection(PanDAAction):
         self.logger.debug('Single PanDA injection resulted in %d distinct jobsets and %d jobdefs.' % (len(jobsetdef), sum([len(jobsetdef[k]) for k in jobsetdef])))
         return jobsetdef
 
-    def makeSpecs(self, task, jobgroup, site, jobset, jobdef, startjobid, basejobname, lfnhanger):
+    def makeSpecs(self, task, outdataset, jobgroup, site, jobset, jobdef, startjobid, basejobname, lfnhanger):
         """Building the specs
 
         :arg TaskWorker.DataObject.Task task: the task to work on
+        :arg str outdataset: the output dataset name where all the produced files will be placed
         :arg WMCore.DataStructs.JobGroup jobgroup: the group containing the jobs
         :arg str site: the borkered site where to run the jobs
         :arg int jobset: the PanDA jobset corresponding to the current task
@@ -62,14 +63,15 @@ class PanDAInjection(PanDAAction):
             #if i > 10:
             #    break
             jobname = "%s-%d" %(basejobname, i)
-            pandajobspec.append(self.createJobSpec(task, job, jobset, jobdef, site, jobname, lfnhanger, i))
+            pandajobspec.append(self.createJobSpec(task, outdataset, job, jobset, jobdef, site, jobname, lfnhanger, i))
             i += 1
         return pandajobspec, i
 
-    def createJobSpec(self, task, job, jobset, jobdef, site, jobname, lfnhanger, jobid):
+    def createJobSpec(self, task, outdataset, job, jobset, jobdef, site, jobname, lfnhanger, jobid):
         """Create a spec for one job
 
         :arg TaskWorker.DataObject.Task task: the task to work on
+        :arg str outdataset: the output dataset name where all the produced files will be placed
         :arg WMCore.DataStructs.Job job: the abstract job
         :arg int jobset: the PanDA jobset corresponding to the current task
         :arg int jobdef: the PanDA jobdef where to append the current jobs --- not used
@@ -78,7 +80,6 @@ class PanDAInjection(PanDAAction):
         :arg str lfnhanger: the random string to be added in the output file name
         :arg int jobid: incremental job number
         :return: the sepc object."""
-        datasetname = 'user/%s/%s' % (task['tm_username'], task['tm_publish_name'])
 
         pandajob = JobSpec()
         ## always setting a job definition ID
@@ -87,7 +88,7 @@ class PanDAInjection(PanDAAction):
         pandajob.jobsetID = jobset if jobset else -1
         pandajob.jobName = jobname
         pandajob.prodUserID = task['tm_user_dn']
-        pandajob.destinationDBlock = datasetname
+        pandajob.destinationDBlock = outdataset
         pandajob.prodSourceLabel = 'user'
         pandajob.computingSite = site
         pandajob.cloud = PandaServerInterface.PandaSites[pandajob.computingSite]['cloud']
@@ -161,8 +162,14 @@ class PanDAInjection(PanDAAction):
         jobset = None
         jobdef = None
         startjobid = 0
+
         basejobname = "%s" % commands.getoutput('uuidgen')
         lfnhanger = ''.join(random.choice(string.ascii_uppercase + string.digits) for x in range(LFNHANGERLEN))
+        ## /<primarydataset>/<yourHyperNewsusername>-<publish_data_name>-<PSETHASH>/USER
+        outdataset = '/%s/%s-%s/USER' %(kwargs['task']['tm_input_dataset'].split('/')[1],
+                                        kwargs['task']['tm_username'],
+                                        kwargs['task']['tm_publish_name'])
+
         for jobgroup in args[0]:
             jobs, site = jobgroup.result
             blocks = [infile['block'] for infile in jobs.jobs[0]['input_files'] if infile['block']]
@@ -173,7 +180,8 @@ class PanDAInjection(PanDAAction):
                     msg = "No site available for submission of task %s" %(kwargs['task'])
                     raise NoAvailableSite(msg)
 
-                jobgroupspecs, startjobid = self.makeSpecs(kwargs['task'], jobs, site, jobset, jobdef, startjobid, basejobname, lfnhanger)
+                jobgroupspecs, startjobid = self.makeSpecs(kwargs['task'], outdataset, jobs, site,
+                                                           jobset, jobdef, startjobid, basejobname, lfnhanger)
                 jobsetdef = self.inject(kwargs['task'], jobgroupspecs)
                 outjobset = jobsetdef.keys()[0]
                 outjobdefs = jobsetdef[outjobset]
