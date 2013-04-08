@@ -1,4 +1,5 @@
 
+import os
 import json
 
 dag_fragment = """
@@ -7,7 +8,7 @@ JOB Job%(count)d Job.submit
 #SCRIPT POST Job%(count)d dag_bootstrap.sh POSTJOB $RETRY $JOB
 #PRE_SKIP Job%(count)d 3
 RETRY Job%(count)d 3
-VARS Job%(count)d count="%(count)d" runAndLumiMask="%(runAndLumiMask)s" inputFiles="%(inputFiles)s" desiredSites="%(desiredSites)s"
+VARS Job%(count)d count="%(count)d" runAndLumiMask="%(runAndLumiMask)s" inputFiles="%(inputFiles)s" +desiredSites="%(desiredSites)s"
 
 JOB ASO%(count)d ASO.submit
 VARS ASO%(count)d count="%(count)d" outputFiles="%(outputFiles)s"
@@ -19,9 +20,9 @@ def make_specs(self, jobgroup, availablesites, outfiles, startjobid):
     specs = []
     i = startjobid
     for job in jobgroup.getJobs():
-        inputFiles = json.dumps([inputfile['lfn'] for inputfile in job['input_files']]).replace('"', '\\"')
-        runAndLumiMask = json.dumps(job['mask']['runAndLumis']).replace('"', '\\"')
-        desiredSites = json.dumps(availablesites).replace('"', '\\"')
+        inputFiles = json.dumps([inputfile['lfn'] for inputfile in job['input_files']]).replace('"', r'\\\"')
+        runAndLumiMask = json.dumps(job['mask']['runAndLumis']).replace('"', r'\\\"')
+        desiredSites = ", ".join(availablesites)
         i += 1
         specs.append({'count': i, 'runAndLumiMask': runAndLumiMask, 'inputFiles': inputFiles,
                       'desiredSites': desiredSites, 'outputFiles': outfiles})
@@ -34,6 +35,8 @@ def create_subdag(splitter_result, **kwargs):
     specs = []
 
     outfiles = kwargs['task']['tm_outfiles'] + kwargs['task']['tm_tfile_outfiles'] + kwargs['task']['tm_edm_outfiles']
+
+    os.chmod("CMSRunAnaly.sh", 0755)
 
     #fixedsites = set(self.config.Sites.available)
     for jobgroup in splitter_result:
