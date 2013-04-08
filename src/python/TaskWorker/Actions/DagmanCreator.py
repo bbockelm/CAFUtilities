@@ -14,9 +14,9 @@ PARENT Job%{count}d ASO%{count}d
 """
 
 def make_specs(self, jobgroup, availablesites, outfiles, startjobid):
-     specs = []
-     i = startjobid
-     for job in jobgroup.jobs:
+    specs = []
+    i = startjobid
+    for job in jobgroup.jobs:
         inputFiles = json.dumps([inputfile['lfn'] for inputfile in job['input_files']])
         runAndLumiMask = json.dumps(job['mask']['runAndLumis'])
         desiredSites = json.dumps(availablesites)
@@ -39,8 +39,8 @@ def create_subdag(splitter_result, **kwargs):
             possiblesites = []
         else:
             possiblesites = jobs[0]['input_files'][0]['locations']
-        availablesites = set(kwargs['task']['tm_site_whitelist']) if kwargs['task']['tm_site_whitelist'] else set(possiblesites) &
-                         set(possiblesites) -
+        availablesites = set(kwargs['task']['tm_site_whitelist']) if kwargs['task']['tm_site_whitelist'] else set(possiblesites) & \
+                         set(possiblesites) - \
                          set(kwargs['task']['tm_site_blacklist'])
         availablesites = list( set(availablesites) & fixedsites )
 

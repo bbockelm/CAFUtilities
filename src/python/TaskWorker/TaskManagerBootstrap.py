@@ -2,6 +2,7 @@
 import os
 import sys
 import errno
+import types
 import pickle
 
 import classad
@@ -9,6 +10,8 @@ import classad
 import TaskWorker.Actions.DBSDataDiscovery as DBSDataDiscovery
 import TaskWorker.Actions.Splitter as Splitter
 import TaskWorker.Actions.DagmanCreator as DagmanCreator
+
+import WMCore.Configuration as Configuration
 
 def bootstrap():
 
@@ -32,22 +35,38 @@ def bootstrap():
         with open(infile, "r") as fd:
             in_args = pickle.load(fd)
 
-    ad['tm_taskname'] = classad.ExprTree("CRAB_Workflow")
-    ad['tm_split_algo'] = classad.ExprTree("CRAB_SplitAlgo")
-    ad['tm_split_args'] = classad.ExprTree("CRAB_AlgoArgs")
-    ad['tm_dbs_url'] = classad.ExprTree("CRAB_DBSUrl")
-    ad['tm_input_dataset'] = classad.ExprTree("CRAB_InputData")
+    config = Configuration.Configuration()
+    config.section_("Services")
+    config.Services.DBSUrl = 'http://cmsdbsprod.cern.ch/cms_dbs_prod_global/servlet/DBSServlet'
+
+    ad['tm_taskname'] = ad.eval("CRAB_Workflow")
+    ad['tm_split_algo'] = ad.eval("CRAB_SplitAlgo")
+    ad['tm_split_args'] = ad.eval("CRAB_AlgoArgs")
+    ad['tm_dbs_url'] = ad.eval("CRAB_DBSUrl")
+    ad['tm_input_dataset'] = ad.eval("CRAB_InputData")
+
+    pure_ad = {}
+    for key in ad:
+        try:
+            pure_ad[key] = ad.eval(key)
+            if isinstance(pure_ad[key], classad.Value):
+                del pure_ad[key]
+            if isinstance(pure_ad[key], types.ListType):
+                pure_ad[key] = [i.eval() for i in pure_ad[key]]
+        except:
+            pass
+    ad = pure_ad
 
     if command == "DBS":
-        task = DBSDataDiscovery(*in_args)
+        task = DBSDataDiscovery.DBSDataDiscovery(config)
     elif command == "SPLIT":
-        task = Splitter.Splitter()
+        task = Splitter.Splitter(config)
     results = task.execute(*in_args, task=ad)
     if command == "SPLIT":
         results = DagmanCreator.create_subdag(results)
 
-    with open(outfile, "r") as fd:
-        pickle.dump(fd, results)
+    with open(outfile, "w") as fd:
+        pickle.dump(results, fd)
 
     return 0
 
