@@ -16,6 +16,10 @@ then
 elif [ "x" != "x$OSG_APP" ]
 then
 	. $OSG_APP/cmssoft/cms/cmsset_default.sh CMSSW_3_3_2
+elif [ -e /cvmfs/cms.cern.ch ]
+then
+	export VO_CMS_SW_DIR=/cvmfs/cms.cern.ch
+	. $VO_CMS_SW_DIR/cmsset_default.sh
 else
 	echo "Error: neither OSG_APP nor VO_CMS_SW_DIR environment variables were set" >&2
 	echo "Error: Because of this, we can't load CMSSW. Not good." >&2
