@@ -20,8 +20,8 @@ def make_specs(self, jobgroup, availablesites, outfiles, startjobid):
     specs = []
     i = startjobid
     for job in jobgroup.getJobs():
-        inputFiles = json.dumps([inputfile['lfn'] for inputfile in job['input_files']]).replace('"', r'\\\"')
-        runAndLumiMask = json.dumps(job['mask']['runAndLumis']).replace('"', r'\\\"')
+        inputFiles = json.dumps([inputfile['lfn'] for inputfile in job['input_files']]).replace('"', r'\"\"')
+        runAndLumiMask = json.dumps(job['mask']['runAndLumis']).replace('"', r'\"\"')
         desiredSites = ", ".join(availablesites)
         i += 1
         specs.append({'count': i, 'runAndLumiMask': runAndLumiMask, 'inputFiles': inputFiles,
