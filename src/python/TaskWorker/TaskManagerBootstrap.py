@@ -1,7 +1,9 @@
 
 import os
 import sys
+import json
 import errno
+import types
 import pickle
 
 import classad
@@ -9,6 +11,8 @@ import classad
 import TaskWorker.Actions.DBSDataDiscovery as DBSDataDiscovery
 import TaskWorker.Actions.Splitter as Splitter
 import TaskWorker.Actions.DagmanCreator as DagmanCreator
+
+import WMCore.Configuration as Configuration
 
 def bootstrap():
 
@@ -32,22 +36,45 @@ def bootstrap():
         with open(infile, "r") as fd:
             in_args = pickle.load(fd)
 
-    ad['tm_taskname'] = classad.ExprTree("CRAB_Workflow")
-    ad['tm_split_algo'] = classad.ExprTree("CRAB_SplitAlgo")
-    ad['tm_split_args'] = classad.ExprTree("CRAB_AlgoArgs")
-    ad['tm_dbs_url'] = classad.ExprTree("CRAB_DBSUrl")
-    ad['tm_input_dataset'] = classad.ExprTree("CRAB_InputData")
+    config = Configuration.Configuration()
+    config.section_("Services")
+    config.Services.DBSUrl = 'http://cmsdbsprod.cern.ch/cms_dbs_prod_global/servlet/DBSServlet'
+
+    ad['tm_taskname'] = ad.eval("CRAB_Workflow")
+    ad['tm_split_algo'] = ad.eval("CRAB_SplitAlgo")
+    ad['tm_dbs_url'] = ad.eval("CRAB_DBSUrl")
+    ad['tm_input_dataset'] = ad.eval("CRAB_InputData")
+    ad['tm_outfiles'] = ad.eval("CRAB_AdditionalOutputFiles")
+    ad['tm_tfile_outfiles'] = ad.eval("CRAB_TFileOutputFiles")
+    ad['tm_edm_outfiles'] = ad.eval("CRAB_EDMOutputFiles")
+    ad['tm_site_whitelist'] = ad.eval("CRAB_SiteWhitelist")
+    ad['tm_site_blacklist'] = ad.eval("CRAB_SiteBlacklist")
+
+    pure_ad = {}
+    for key in ad:
+        try:
+            pure_ad[key] = ad.eval(key)
+            if isinstance(pure_ad[key], classad.Value):
+                del pure_ad[key]
+            if isinstance(pure_ad[key], types.ListType):
+                pure_ad[key] = [i.eval() for i in pure_ad[key]]
+        except:
+            pass
+    ad = pure_ad
+    ad['CRAB_AlgoArgs'] = json.loads(ad["CRAB_AlgoArgs"])
+    ad['tm_split_args'] = ad["CRAB_AlgoArgs"]
 
     if command == "DBS":
-        task = DBSDataDiscovery(*in_args)
+        task = DBSDataDiscovery.DBSDataDiscovery(config)
     elif command == "SPLIT":
-        task = Splitter.Splitter()
-    results = task.execute(*in_args, task=ad)
+        task = Splitter.Splitter(config)
+    results = task.execute(in_args, task=ad).result
     if command == "SPLIT":
-        results = DagmanCreator.create_subdag(results)
+        results = DagmanCreator.create_subdag(results, task=ad)
 
-    with open(outfile, "r") as fd:
-        pickle.dump(fd, results)
+    print results
+    with open(outfile, "w") as fd:
+        pickle.dump(results, fd)
 
     return 0
 
