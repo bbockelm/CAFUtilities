@@ -8,6 +8,7 @@ import re
 import json
 import traceback
 import pickle
+from ast import literal_eval
 
 EC_MissingArg  =        50113 #10 for ATLAS trf
 EC_CMSRunWrapper =      10040
@@ -138,12 +139,13 @@ except Exception, ex:
 #PoolFileCatalog.xml? Ce ne importa?
 
 # rename output files
-try:
-    for oldName,newName in json.loads(outFiles).iteritems():
-        os.rename(oldName, newName)
-except Exception, ex:
-    handleException("FAILED", EC_MoveOutErr, "Exception while moving the files.")
-    sys.exit(EC_MoveOutErr)
+if JobExitCode == 0:
+    try:
+        for oldName,newName in literal_eval(outFiles).iteritems():
+            os.rename(oldName, newName)
+    except Exception, ex:
+        handleException("FAILED", EC_MoveOutErr, "Exception while moving the files.")
+        sys.exit(EC_MoveOutErr)
 
 #Create the report file
 try:
