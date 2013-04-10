@@ -139,7 +139,7 @@ except Exception, ex:
 #PoolFileCatalog.xml? Ce ne importa?
 
 # rename output files
-if JobExitCode == 0:
+if jobExitCode == 0:
     try:
         for oldName,newName in literal_eval(outFiles).iteritems():
             os.rename(oldName, newName)
