@@ -8,15 +8,15 @@ JOB Job%(count)d Job.submit
 #SCRIPT POST Job%(count)d dag_bootstrap.sh POSTJOB $RETRY $JOB
 #PRE_SKIP Job%(count)d 3
 RETRY Job%(count)d 3
-VARS Job%(count)d count="%(count)d" runAndLumiMask="%(runAndLumiMask)s" inputFiles="%(inputFiles)s" +desiredSites="%(desiredSites)s"
+VARS Job%(count)d count="%(count)d" runAndLumiMask="%(runAndLumiMask)s" inputFiles="%(inputFiles)s" +desiredSites="\\"%(desiredSites)s\\"" localOutputFiles="%(localOutputFiles)s"
 
-JOB ASO%(count)d ASO.submit
-VARS ASO%(count)d count="%(count)d" outputFiles="%(outputFiles)s"
+#JOB ASO%(count)d ASO.submit
+#VARS ASO%(count)d count="%(count)d" outputFiles="%(remoteOutputFiles)s"
 
-PARENT Job%(count)d CHILD ASO%(count)d
+#PARENT Job%(count)d CHILD ASO%(count)d
 """
 
-def make_specs(self, jobgroup, availablesites, outfiles, startjobid):
+def make_specs(task, jobgroup, availablesites, outfiles, output_dest, startjobid):
     specs = []
     i = startjobid
     for job in jobgroup.getJobs():
@@ -24,8 +24,21 @@ def make_specs(self, jobgroup, availablesites, outfiles, startjobid):
         runAndLumiMask = json.dumps(job['mask']['runAndLumis']).replace('"', r'\"\"')
         desiredSites = ", ".join(availablesites)
         i += 1
+        remoteOutputFiles = []
+        localOutputFiles = []
+        for file in outfiles:
+            info = file.rsplit(".", 1)
+            if len(info) == 2:
+                fileName = "%s_%d.%s" % (info[0], i, info[1])
+            else:
+                fileName = "%s_%d" % (file, i)
+            remoteOutputFiles.append("%s" % os.path.join(output_dest, fileName))
+            localOutputFiles.append("%s?remoteName=%s" % (file, fileName))
+        remoteOutputFiles = ", ".join(remoteOutputFiles)
+        localOutputFiles = ", ".join(localOutputFiles)
         specs.append({'count': i, 'runAndLumiMask': runAndLumiMask, 'inputFiles': inputFiles,
-                      'desiredSites': desiredSites, 'outputFiles': outfiles})
+                      'desiredSites': desiredSites, 'remoteOutputFiles': remoteOutputFiles,
+                      'localOutputFiles': localOutputFiles})
         print specs[-1]
     return specs, i
 
@@ -38,6 +51,9 @@ def create_subdag(splitter_result, **kwargs):
 
     os.chmod("CMSRunAnaly.sh", 0755)
 
+    output_dest = kwargs['task']['CRAB_AsyncDest'] + ':' + os.path.join("/store/user", kwargs['task']['CRAB_UserHN'], kwargs['task']['CRAB_Workflow'], kwargs['task']['CRAB_PublishName'])
+    print "Output destination: %s" % output_dest
+
     #fixedsites = set(self.config.Sites.available)
     for jobgroup in splitter_result:
         jobs = jobgroup.getJobs()
@@ -45,17 +61,21 @@ def create_subdag(splitter_result, **kwargs):
             possiblesites = []
         else:
             possiblesites = jobs[0]['input_files'][0]['locations']
-        availablesites = set(kwargs['task']['tm_site_whitelist']) if kwargs['task']['tm_site_whitelist'] else set(possiblesites) & \
-                         set(possiblesites) - \
-                         set(kwargs['task']['tm_site_blacklist'])
+        print "Possible sites: %s" % possiblesites
+        print 'Blacklist: %s; whitelist %s' % (kwargs['task']['tm_site_blacklist'], kwargs['task']['tm_site_whitelist'])
+        if kwargs['task']['tm_site_whitelist']:
+            availablesites = set(kwargs['task']['tm_site_whitelist'])
+        else:
+            availablesites = set(possiblesites) - set(kwargs['task']['tm_site_blacklist'])
         #availablesites = set(availablesites) & fixedsites
-        availablesites = list(availablesites)
+        availablesites = [str(i) for i in availablesites]
+        print "Resulting available sites: %s" % ", ".join(availablesites)
 
         if not availablesites:
             msg = "No site available for submission of task %s" % (kwargs['task'])
             raise NoAvailableSite(msg)
 
-        jobgroupspecs, startjobid = make_specs(kwargs['task'], jobgroup, availablesites, outfiles, startjobid)
+        jobgroupspecs, startjobid = make_specs(kwargs['task'], jobgroup, availablesites, outfiles, output_dest, startjobid)
         specs += jobgroupspecs
 
     dag = ""
