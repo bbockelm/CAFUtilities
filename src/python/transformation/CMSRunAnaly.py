@@ -178,15 +178,3 @@ except Exception, ex:
     msg = "Exception while handling the job report."
     handleException("FAILED", EC_ReportHandlingErr, msg)
     sys.exit(EC_ReportHandlingErr)
-
-#create the Pool File Catalog (?)
-pfcName = 'PoolFileCatalog.xml'
-pfcFile = open(pfcName,'w')
-pfcFile.write("""<?xml version="1.0" encoding="UTF-8" standalone="no" ?>
-<!-- Edited By POOL -->
-<!DOCTYPE POOLFILECATALOG SYSTEM "InMemory">
-<POOLFILECATALOG>
-
-</POOLFILECATALOG>
-""")
-pfcFile.close()
