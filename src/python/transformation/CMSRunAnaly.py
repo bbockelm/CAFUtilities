@@ -79,6 +79,7 @@ except:
 
 #wget sandnox
 if archiveJob:
+    os.environ['WMAGENTJOBDIR'] = os.getcwd()
     print "--- wget for jobO ---"
     output = commands.getoutput('wget -h')
     wgetCommand = 'wget'
@@ -116,12 +117,13 @@ open(destDir + '/__init__.py','w').close()
 from WMCore.WMSpec.Steps.Executors.CMSSW import executeCMSSWStack
 from WMCore.WMRuntime.Bootstrap import setupLogging
 from WMCore.FwkJobReport.Report import Report
+from WMCore.FwkJobReport.Report import FwkJobReportException
 from WMCore.WMSpec.Steps.WMExecutionFailure import WMExecutionFailure
 
 
 try:
     setupLogging('.')
-    jobExitCode, _, _, _ = executeCMSSWStack(taskName = 'Analysis', stepName = 'cmsRun', scramSetup = '', scramCommand = 'scramv1', scramProject = 'CMSSW', scramArch = scramArch, cmsswVersion = cmsswVersion, jobReportXML = 'FrameworkJobReport.xml', cmsswCommand = 'cmsRun', cmsswConfig = 'PSet.py', cmsswArguments = '', workDir = os.getcwd(), userTarball = '', userFiles ='', preScripts = [], scramPreScripts = ['%s/TweakPSet.py %s \'%s\' \'%s\'' % (os.getcwd(), os.getcwd(), inputFile, lumiMask)], stdOutFile = 'cmsRun-stdout.log', stdInFile = 'cmsRun-stderr.log', jobId = 223, jobRetryCount = 0, invokeCmd = 'python')
+    jobExitCode, _, _, _ = executeCMSSWStack(taskName = 'Analysis', stepName = 'cmsRun', scramSetup = '', scramCommand = 'scramv1', scramProject = 'CMSSW', scramArch = scramArch, cmsswVersion = cmsswVersion, jobReportXML = 'FrameworkJobReport.xml', cmsswCommand = 'cmsRun', cmsswConfig = 'PSet.py', cmsswArguments = '', workDir = os.getcwd(), userTarball = archiveJob, userFiles ='', preScripts = [], scramPreScripts = ['%s/TweakPSet.py %s \'%s\' \'%s\'' % (os.getcwd(), os.getcwd(), inputFile, lumiMask)], stdOutFile = 'cmsRun-stdout.log', stdInFile = 'cmsRun-stderr.log', jobId = 223, jobRetryCount = 0, invokeCmd = 'python')
 except WMExecutionFailure, WMex:
     print "caught WMExecutionFailure - code = %s - name = %s - detail = %s" % (WMex.code, WMex.name, WMex.detail)
     exmsg = WMex.name
