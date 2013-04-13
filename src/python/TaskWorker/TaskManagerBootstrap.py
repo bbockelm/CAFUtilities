@@ -11,6 +11,7 @@ import classad
 import TaskWorker.Actions.DBSDataDiscovery as DBSDataDiscovery
 import TaskWorker.Actions.Splitter as Splitter
 import TaskWorker.Actions.DagmanCreator as DagmanCreator
+import TaskWorker.Actions.ASO as ASO
 
 import WMCore.Configuration as Configuration
 
@@ -22,7 +23,7 @@ def bootstrap():
     elif command == "POSTJOB":
         return DagmanCreator.prejob(*sys.argv[2:])
     elif command == "ASO":
-        return async_stageout(*sys.argv[2:])
+        return ASO.async_stageout(*sys.argv[2:])
 
     infile, outfile = sys.argv[2:]
 

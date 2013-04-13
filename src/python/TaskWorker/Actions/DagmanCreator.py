@@ -10,13 +10,13 @@ JOB Job%(count)d Job.submit
 RETRY Job%(count)d 3
 VARS Job%(count)d count="%(count)d" runAndLumiMask="%(runAndLumiMask)s" inputFiles="%(inputFiles)s" +desiredSites="\\"%(desiredSites)s\\"" localOutputFiles="%(localOutputFiles)s"
 
-#JOB ASO%(count)d ASO.submit
-#VARS ASO%(count)d count="%(count)d" outputFiles="%(remoteOutputFiles)s"
+JOB ASO%(count)d ASO.submit
+VARS ASO%(count)d count="%(count)d" outputFiles="%(remoteOutputFiles)s"
 
-#PARENT Job%(count)d CHILD ASO%(count)d
+PARENT Job%(count)d CHILD ASO%(count)d
 """
 
-def make_specs(task, jobgroup, availablesites, outfiles, output_dest, startjobid):
+def make_specs(task, jobgroup, availablesites, outfiles, startjobid):
     specs = []
     i = startjobid
     for job in jobgroup.getJobs():
@@ -32,9 +32,9 @@ def make_specs(task, jobgroup, availablesites, outfiles, output_dest, startjobid
                 fileName = "%s_%d.%s" % (info[0], i, info[1])
             else:
                 fileName = "%s_%d" % (file, i)
-            remoteOutputFiles.append("%s" % os.path.join(output_dest, fileName))
+            remoteOutputFiles.append("%s" % fileName)
             localOutputFiles.append("%s?remoteName=%s" % (file, fileName))
-        remoteOutputFiles = ", ".join(remoteOutputFiles)
+        remoteOutputFiles = " ".join(remoteOutputFiles)
         localOutputFiles = ", ".join(localOutputFiles)
         specs.append({'count': i, 'runAndLumiMask': runAndLumiMask, 'inputFiles': inputFiles,
                       'desiredSites': desiredSites, 'remoteOutputFiles': remoteOutputFiles,
@@ -50,9 +50,6 @@ def create_subdag(splitter_result, **kwargs):
     outfiles = kwargs['task']['tm_outfiles'] + kwargs['task']['tm_tfile_outfiles'] + kwargs['task']['tm_edm_outfiles']
 
     os.chmod("CMSRunAnaly.sh", 0755)
-
-    output_dest = kwargs['task']['CRAB_AsyncDest'] + ':' + os.path.join("/store/user", kwargs['task']['CRAB_UserHN'], kwargs['task']['CRAB_Workflow'], kwargs['task']['CRAB_PublishName'])
-    print "Output destination: %s" % output_dest
 
     #fixedsites = set(self.config.Sites.available)
     for jobgroup in splitter_result:
@@ -75,7 +72,7 @@ def create_subdag(splitter_result, **kwargs):
             msg = "No site available for submission of task %s" % (kwargs['task'])
             raise NoAvailableSite(msg)
 
-        jobgroupspecs, startjobid = make_specs(kwargs['task'], jobgroup, availablesites, outfiles, output_dest, startjobid)
+        jobgroupspecs, startjobid = make_specs(kwargs['task'], jobgroup, availablesites, outfiles, startjobid)
         specs += jobgroupspecs
 
     dag = ""
