@@ -9,7 +9,6 @@ from TaskWorker.DataObjects.Result import Result
 from TaskWorker.WorkerExceptions import PanDAIdException, PanDAException, NoAvailableSite
 
 import time
-import urllib2
 import commands
 import traceback
 import os
@@ -152,6 +151,9 @@ class PanDAInjection(PanDAAction):
         pandajob.jobParameters    += '-o "%s" ' % str(outjobpar)
         #job.jobParameters    += '%s ' % str(wfid) #TODO Is it necessary? Why has it been removed?
 
+        if 'panda_oldjobid' in job and job['panda_oldjobid']:
+            pandajob.parentID = job['panda_oldjobid']
+
         pandajob.addFile(outFileSpec(log=True))
         for filetoadd in alloutfiles:
             pandajob.addFile(filetoadd)
@@ -161,7 +163,9 @@ class PanDAInjection(PanDAAction):
     def execute(self, *args, **kwargs):
         self.logger.info(" create specs and inject into PanDA ")
         results = []
-        jobset = None
+        ## in case the jobset already exists it means the new jobs need to be appended to the existing task
+        ## (a possible case for this is the resubmission)
+        jobset = kwargs['task']['panda_jobset_id'] if kwargs['task']['panda_jobset_id'] else None
         jobdef = None
         startjobid = 0
 

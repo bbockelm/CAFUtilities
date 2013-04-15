@@ -8,6 +8,7 @@ from TaskWorker.Actions.PanDABrokerage import PanDABrokerage
 from TaskWorker.Actions.PanDAInjection import PanDAInjection
 from TaskWorker.Actions.PanDAgetSpecs import PanDAgetSpecs
 from TaskWorker.Actions.PanDAKill import PanDAKill
+from TaskWorker.Actions.Specs2Jobs import Specs2Jobs
 from TaskWorker.WorkerExceptions import WorkerHandlerException
 
 class TaskHandler(object):
@@ -82,6 +83,8 @@ def handleResubmit(config, task, *args, **kwargs):
     :return: the result of the handler operation."""
     handler = TaskHandler(task)
     handler.addWork( PanDAgetSpecs(pandaconfig=config) )
+    handler.addWork( Specs2Jobs(config=config) )
+    handler.addWork( PanDABrokerage(pandaconfig=config) )
     handler.addWork( PanDAInjection(pandaconfig=config) )
     return handler.actionWork(args, kwargs)
 
