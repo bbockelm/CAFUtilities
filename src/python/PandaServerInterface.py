@@ -53,6 +53,7 @@ def initProxyParameters(serverkey, servercert, serverdn, uisource, credpath):
     serverCert, serverKey, serverDN, uiSource, credServerPath = servercert, serverkey, serverdn, uisource, credpath
 
 def retrieveUserProxy(user, vo, group, role):
+    return os.getenv('X509_USER_PROXY')
     myproxyserver = "myproxy.cern.ch"
     defaultDelegation = { 'vo': vo,
                           'logger': LOGGER,
@@ -504,3 +505,23 @@ def killJobs(user, vo, group, role, ids, code=None, verbose=True, useMailAsID=Fa
         errStr = "ERROR killJobs : %s %s" % (type,value)
         print errStr
         return EC_Failed,output+'\n'+errStr
+
+# get full job status
+def getFullJobStatus(ids,user,vo,group,role,verbose=False):
+    # serialize
+    strIDs = pickle.dumps(ids)
+    # instantiate curl
+    curl = _Curl()
+    curl.sslCert = userCertFile(user, vo, group, role)
+    curl.sslKey  = userCertFile(user, vo, group, role)
+    curl.verbose = verbose
+    # execute
+    url = baseURLSSL + '/getFullJobStatus'
+    data = {'ids':strIDs}
+    status,output = curl.post(url,data)
+    try:
+        return status,pickle.loads(output)
+    except Exception, ex:
+        type, value, traceBack = sys.exc_info()
+        LOGGER.error("ERROR getFullJobStatus : %s %s" % (type,value))
+        LOGGER.error(str(traceBack))
