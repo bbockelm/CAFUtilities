@@ -49,7 +49,7 @@ class Task(dict):
         self['tm_edm_outfiles'] = literal_eval(task[27])
         self['tm_data_runs'] = task[28]
         self['tm_transformation'] = task[29]
-        self['tm_arguments'] = task[30]
+        self['tm_arguments'] = literal_eval(task[30])
 
     def __str__(self):
         """Use me to avoiding to vomiting all parameters around.
