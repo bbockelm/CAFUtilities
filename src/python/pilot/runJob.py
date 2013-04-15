@@ -373,7 +373,7 @@ def stageIn(job, jobSite, analJob, pilot_initdir, pworkdir):
         tin_0 = os.times()
         ec, job.pilotErrorDiag, statusPFCTurl, job.filesWithoutFAX, job.filesWithFAX, usedFAXandDirectIO = \
             mover.get_data(job, jobSite, ins, stageinretry, analysisJob=analJob, usect=useCT,\
-                           pinitdir=pilot_initdir, proxycheck=False, inputDir=inputDir, workDir=pworkdir, experiment=experiment)
+                           pinitdir=pilot_initdir, proxycheck=False, inputDir=inputDir, workDir=pworkdir)
         if ec != 0:
             job.result[2] = ec
         tin_1 = os.times()
@@ -615,7 +615,7 @@ def createFileMetadata(outFiles, job, outsDict, dsname, datasetDict, sitename):
     # create preliminary metadata (no metadata yet about log file - added later in pilot.py)
     _fname = "%s/metadata-%d.xml" % (job.workdir, job.jobId)
     try:
-        _status = pUtil.PFCxml(experiment, _fname, list(job.outFiles), fguids=job.outFilesGuids, fntag="lfn", alog=job.logFile, alogguid=guid,\
+        _status = pUtil.PFCxml(job.experiment, _fname, list(job.outFiles), fguids=job.outFilesGuids, fntag="lfn", alog=job.logFile, alogguid=guid,\
                                fsize=fsize, checksum=checksum, analJob=analJob)
     except Exception, e:
         pilotErrorDiag = "PFCxml failed due to problematic XML: %s" % (e)
@@ -694,7 +694,7 @@ def stageOut(job, jobSite, outs, pilot_initdir, testLevel, analJob, dsname, data
     # generate the xml for the output files and the site mover
     pfnFile = "OutPutFileCatalog.xml"
     try:
-        _status = pUtil.PFCxml(experiment, pfnFile, outs, fguids=job.outFilesGuids, fntag="pfn")
+        _status = pUtil.PFCxml(job.experiment, pfnFile, outs, fguids=job.outFilesGuids, fntag="pfn")
     except Exception, e:
         job.pilotErrorDiag = "PFCxml failed due to problematic XML: %s" % (e)
         tolog("!!WARNING!!1113!! %s" % (job.pilotErrorDiag)) 
@@ -714,7 +714,7 @@ def stageOut(job, jobSite, outs, pilot_initdir, testLevel, analJob, dsname, data
     tin_0 = os.times()
     try:
         rc, job.pilotErrorDiag, rf, rs, job.filesNormalStageOut, job.filesAltStageOut = mover.mover_put_data("xmlcatalog_file:%s" % (pfnFile), dsname, jobSite.sitename,\
-                                         ub=jobSite.dq2url, analysisJob=analJob, testLevel=testLevel, pinitdir=pilot_initdir,\
+                                         ub=jobSite.dq2url, analysisJob=analJob, testLevel=testLevel, pinitdir=pilot_initdir, scopeOut=job.scopeOut,\
                                          proxycheck=proxycheckFlag, spsetup=job.spsetup, token=job.destinationDBlockToken,\
                                          userid=job.prodUserID, datasetDict=datasetDict, prodSourceLabel=job.prodSourceLabel,\
                                          outputDir=outputDir, jobId=job.jobId, jobWorkDir=job.workdir, DN=job.prodUserID,\
@@ -832,27 +832,23 @@ if __name__ == "__main__":
         tolog("Current job workdir is: %s" % os.getcwd())
         tolog("Site workdir is: %s" % jobSite.workdir)
 
+        # get the experiment object
+        thisExperiment = getExperiment(experiment)
+        tolog("runJob will serve experiment: %s" % (thisExperiment.getExperiment()))
+
         region = readpar('region')
         JR = JobRecovery()
         try:
             job = Job.Job()
             job.setJobDef(newJobDef.job)
             job.workdir = jobSite.workdir
+            job.experiment = experiment
             # figure out and set payload file names
-            #Mancinelli
-            job.setPayloadName(pUtil.getPayloadName(job, experiment))
+            job.setPayloadName(thisExperiment.getPayloadName(job))
         except Exception, e:
             pilotErrorDiag = "Failed to process job info: %s" % str(e)
             tolog("!!WARNING!!3000!! %s" % (pilotErrorDiag))
             failJob(0, error.ERR_UNKNOWN, job, pilotserver, pilotport, pilotErrorDiag=pilotErrorDiag)
-
-        # get the experiment object
-        thisExperiment = getExperiment(experiment)
-        if thisExperiment:
-            tolog("runJob will serve experiment: %s" % (thisExperiment.getExperiment()))
-        else:
-            tolog("!!FAILED!!2234!! Did not get an experiment object from the factory")
-            failJob(0, error.ERR_GENERALERROR, job, pilotserver, pilotport, pilotErrorDiag=pilotErrorDiag)
 
         # prepare for the output file data directory
         # (will only created for jobs that end up in a 'holding' state)
@@ -1014,7 +1010,7 @@ if __name__ == "__main__":
 
         # payload error handling
         ed = ErrorDiagnosis()
-        job = ed.interpretPayload(job, res, getstatusoutput_was_interrupted, current_job_number, runCommandList, failureCode, experiment)
+        job = ed.interpretPayload(job, res, getstatusoutput_was_interrupted, current_job_number, runCommandList, failureCode)
         if job.result[1] != 0 or job.result[2] != 0:
             failJob(job.result[1], job.result[2], job, pilotserver, pilotport, pilotErrorDiag=job.pilotErrorDiag)
 
@@ -1025,7 +1021,6 @@ if __name__ == "__main__":
         _retjs = JR.updateJobStateTest(job, jobSite, node, mode="test")
 
         # verify and prepare and the output files for transfer
-        # Mancinelli: fails with cms transformation
         ec, pilotErrorDiag, outs, outsDict = RunJobUtilities.prepareOutFiles(job.outFiles, job.logFile, job.workdir)
         if ec:
             # missing output file (only error code from prepareOutFiles)

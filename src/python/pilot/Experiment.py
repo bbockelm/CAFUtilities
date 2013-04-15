@@ -22,6 +22,7 @@ class Experiment(object):
     __experiment = "generic"               # String defining the experiment
     __instance = None                      # Boolean used by subclasses to become a Singleton
     __error = PilotErrors()                # PilotErrors object
+    __doFileLookups = False                # True for LFC based file lookups (basically a dummy data member here since singleton object is static)
 
     # Required methods
 
@@ -44,10 +45,24 @@ class Experiment(object):
 
         return cmd
 
+    def getFileLookups(self):
+        """ Return the file lookup boolean """
+
+        return self.__doFileLookups
+
+    def doFileLookups(self, doFileLookups):
+        """ Update the file lookups boolean """
+
+        # Only implement this method if class really wants to update the __doFileLookups boolean
+        # ATLAS wants to implement this, but not CMS
+        # Method is used by Mover
+        # self.__doFileLookups = doFileLookups
+        pass
+
     def willDoFileLookups(self):
         """ Should (LFC) file lookups be done by the pilot or not? """
 
-        return False
+        return self.__doFileLookups
 
     def willDoFileRegistration(self):
         """ Should (LFC) file registration be done by the pilot or not? """
@@ -56,6 +71,17 @@ class Experiment(object):
 
     # Additional optional methods
     # ...
+
+    def getPayloadName(self, job):
+        """ Set a suitable name for the payload stdout """
+
+        # The payload <name> gets translated into <name>_stdout.txt
+        # which is the name of the stdout file produced by the payload execution
+        # (essentially commands.getoutput("<setup>; <payload executable> [options] > <name>_stdout.txt"))
+
+        # The job object can be used to create more precise stdout names (see e.g. the ATLASExperiment implementation)
+
+        return "payload"
 
     def isOutOfMemory(self, **kwargs):
         """ Try to identify out of memory errors in the stderr/out """
@@ -478,3 +504,31 @@ class Experiment(object):
 
         return guidList
 
+    def getMetadataForRegistration(self, guid):
+        """ Return metadata for [LFC] file registration """
+
+        # This method can insert special metadata into the metadata.xml file
+        # E.g. it can add preliminary XML tags for info that will only be known
+        # at a later time, such as "<metadata att_name="surl" att_value="%s-surltobeset"/>\n' % (guid)"
+        # The <guid>-surltobeset will be replaced by the pilot by the appropriate value once it is known
+        # See e.g. the CMSExperiment implementation
+
+        # The method is called from pUtil::PFCxml() during metadata file creation
+
+        return ""
+
+    def getAttrForRegistration(self):
+        """ Return the attribute of the metadata XML to be updated with surl value """
+
+        # Used in combination with Experiment::getMetadataForRegistration()
+        # The attribute (default 'surl') will be copied into the metadata string used for pattern matching
+        # E.g. re.compile('\<metadata att\_name\=\"%s\" att\_value\=\"([a-zA-Z0-9-]+)\-surltobeset\"\/\>' % (attribute))
+
+        return 'surl'
+
+    def getExpSpecificMetadata(self, job, workdir):
+        """ Return experiment specific metadata """
+
+        # See e.g. implementation in CMSExperiment
+
+        return ""

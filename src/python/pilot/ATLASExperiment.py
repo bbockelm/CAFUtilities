@@ -38,6 +38,7 @@ class ATLASExperiment(Experiment):
     __analysisJob = False
     __job = None                           # Current Job object
     __error = PilotErrors()                # PilotErrors object
+    __doFileLookups = False                # True for LFC based file lookups
 
     # Required methods
 
@@ -417,12 +418,22 @@ class ATLASExperiment(Experiment):
 
         return 0, pilotErrorDiag, cmd, special_setup_cmd, JEM, cmtconfig
 
+    def getFileLookups(self):
+        """ Return the file lookup boolean """
+
+        return self.__doFileLookups
+
+    def doFileLookups(self, doFileLookups):
+        """ Update the file lookups boolean """
+
+        self.__doFileLookups = doFileLookups
+
     def willDoFileLookups(self):
         """ Should (LFC) file lookups be done by the pilot or not? """
 
         status = False
 
-        if readpar('lfchost') != "":
+        if readpar('lfchost') != "" and self.getFileLookups():
             status = True
 
         if status:
@@ -531,7 +542,7 @@ class ATLASExperiment(Experiment):
 
     def getNumberOfEvents(self, **kwargs):
         """ Return the number of events """
-        # ..aand a string of the form N|N|..|N with the number of jobs in the trf(s)
+        # ..and a string of the form N|N|..|N with the number of jobs in the trf(s)
 
         job = kwargs.get('job', None)
         number_of_jobs = kwargs.get('number_of_jobs', 1)
@@ -819,7 +830,7 @@ class ATLASExperiment(Experiment):
 
             # Install trf in the run dir
             try:
-                ec, pilotErrorDiag = installPyJobTransforms(job.atlasRelease, job.homePackage, swbase, cmtconfig)
+                ec, pilotErrorDiag = self.installPyJobTransforms(job.atlasRelease, job.homePackage, swbase, cmtconfig)
             except Exception, e:
                 pilotErrorDiag = "installPyJobTransforms failed: %s" % str(e)
                 tolog("!!FAILED!!3000!! %s" % (pilotErrorDiag))
@@ -846,6 +857,8 @@ class ATLASExperiment(Experiment):
 
         status = False
         pilotErrorDiag = ""
+
+        import string
 
         if package.find('_') > 0: # jobdef style (e.g. "AtlasProduction_12_0_7_2")
             ps = package.split('_')
@@ -1799,22 +1812,87 @@ class ATLASExperiment(Experiment):
 
         return rel_N
 
+    def dump(self, path, cmd="cat"):
+        """ Dump the content of path to the log """
+
+        if cmd != "cat":
+            _cmd = "%s %s" % (cmd, path)
+            tolog("%s:\n%s" % (_cmd, commands.getoutput(_cmd)))
+        else:
+            if os.path.exists(path):
+                _cmd = "%s %s" % (cmd, path)
+                tolog("%s:\n%s" % (_cmd, commands.getoutput(_cmd)))
+            else:
+                tolog("Path %s does not exist" % (path))
+
+    def displayArchitecture(self):
+        """ Display system architecture """
+
+        tolog("Architecture information:")
+
+        cmd = "lsb_release -a"
+        tolog("Excuting command: %s" % (cmd))
+        out = commands.getoutput(cmd)
+        if "Command not found" in out:
+            # Dump standard architecture info files if available
+            self.dump("/etc/lsb-release")
+            self.dump("/etc/SuSE-release")
+            self.dump("/etc/redhat-release")
+            self.dump("/etc/debian_version")
+            self.dump("/etc/issue")
+            self.dump("$MACHTYPE", cmd="echo")
+        else:
+            tolog("\n%s" % (out))
+
     def specialChecks(self, **kwargs):
         """ Implement special checks here """
 
         status = False
         # appdir = kwargs.get('appdir', '')
 
-        # display the cvmfs ChangeLog is possible
+        # Display system architecture
+        self.displayArchitecture()
+
+        # Display the cvmfs ChangeLog is possible
         self.displayChangeLog()
 
-        # set the python version used by the pilot
+        # Set the python version used by the pilot
         setPilotPythonVersion()
 
-        # test the LFC module
+        # Test the LFC module
         status = self.testImportLFCModule()
 
         return status
+
+    def getPayloadName(self, job):
+        """ Figure out a suitable name for the payload stdout """
+
+        if job.processingType in ['prun']:
+            name = job.processingType
+        else:
+            jobtrf = job.trf.split(",")[0]
+            if jobtrf.find("panda") > 0 and jobtrf.find("mover") > 0:
+                name = "pandamover"
+            elif jobtrf.find("Athena") > 0 or jobtrf.find("trf") > 0 or jobtrf.find("_tf") > 0:
+                name = "athena"
+            else:
+                if isBuildJob(job.outFiles):
+                    name = "buildjob"
+                else:
+                    name = "payload"
+
+        return name
+
+    def getMetadataForRegistration(self, guid):
+        """ Return metadata (not known yet) for LFC registration """
+
+        # Use the GUID as identifier (the string "<GUID>-surltobeset" will later be replaced with the SURL)        
+        return '    <metadata att_name="surl" att_value="%s-surltobeset"/>\n' % (guid) 
+
+    def getAttrForRegistration(self):
+        """ Return the attribute of the metadata XML to be updated with surl value """
+        
+        return 'surl'
 
 if __name__ == "__main__":
 

@@ -331,6 +331,9 @@ def PFCxml(experiment, fname, fnlist=[], fguids=[], fntag=None, alog=None, alogg
     glist = []
     from SiteMover import SiteMover
 
+    # get the experiment object
+    thisExperiment = getExperiment(experiment)
+
     # for metadata.xml prepare the file for potential guid grabbing
     if "metadata" in fname and None in fguids:
         try:
@@ -454,15 +457,11 @@ def PFCxml(experiment, fname, fnlist=[], fguids=[], fntag=None, alog=None, alogg
 
             # add SURL metadata (not known yet) for server LFC registration
             # use the GUID as identifier (the string "<GUID>-surltobeset" will later be replaced with the SURL)
-            # Mancinelli
-            thisExperiment = getExperiment(experiment)
             if thisExperiment:
-                tolog("pUtil will serve experiment: %s" % (thisExperiment.getExperiment()))
-                tolog(thisExperiment.getMetadataForRegistration(glist[i]))
-                fd.write(thisExperiment.getMetadataForRegistration(glist[i])) 
-            else:
-                tolog("!!FAILED!!1234!! Did not get an experiment object from the factory")
-                return False
+                special_xml = thisExperiment.getMetadataForRegistration(glist[i])
+                if special_xml != "":
+                    fd.write(special_xml)
+
             # add log file metadata later (not known yet)
             if flist[i] == alog:
                 fd.write('    <metadata att_name="fsize" att_value=""/>\n')
@@ -1451,39 +1450,7 @@ def isAnalysisJob(trf):
     else:
         analysisJob = False
 
-    return analysisJob    
-
-def getPayloadName(job, experiment):
-    """ figure out a suitable name for the payload """
-    #Mancinelli    
-    thisExperiment = getExperiment(experiment)
-    if thisExperiment:
-        tolog("Pilot will serve experiment: %s" % (thisExperiment.getExperiment()))
-        try:
-            name = thisExperiment.getPayloadName(job)
-            tolog("Mancinelli: thisExperiment.getPayloadName(job) = %s " % name)
-            if name and name != "":
-                return name
-        except:
-            tolog("!!WARNING!! getPayloadName not implemented in %s Experiment class" % thisExperiment.getExperiment())
-    else:
-        tolog("!!FAILED!!1234!! Did not get an experiment object from the factory")
-
-    if job.processingType in ['prun']:
-        name = job.processingType
-    else:
-        jobtrf = job.trf.split(",")[0]
-        if jobtrf.find("panda") > 0 and jobtrf.find("mover") > 0:
-            name = "pandamover"
-        elif jobtrf.find("Athena") > 0 or jobtrf.find("trf") > 0:
-            name = "athena"
-        else:
-            if isBuildJob(job.outFiles):
-                name = "buildjob"
-            else:
-                name = "payload"
-
-    return name
+    return analysisJob
 
 def timedCommand(cmd, timeout=300):
     """ Protect cmd with timed_command """
@@ -2900,7 +2867,9 @@ def updateXMLWithSURLs(experiment, node_xml, workDir, jobId, jobrec, format=''):
     from SiteMover import SiteMover
     sitemover = SiteMover()
     surlDictionary = sitemover.getSURLDictionary(workDir, jobId)
-    tolog("surlDictionary=%s" % str(surlDictionary))
+
+    # get the experiment object
+    thisExperiment = getExperiment(experiment)
 
     node_xml_list = node_xml.split("\n")
     # loop over the xml and update where it is needed
@@ -2908,15 +2877,11 @@ def updateXMLWithSURLs(experiment, node_xml, workDir, jobId, jobrec, format=''):
         if format == 'NG':
             re_tobeset = re.compile('\<surl\>([a-zA-Z0-9-]+)\-surltobeset')
         else:
-            thisExperiment = getExperiment("CMS")
-            metadata_att_name = ""
             if thisExperiment:
-                tolog("Pilot will serve experiment: %s" % (thisExperiment.getExperiment()))
-                tolog(thisExperiment.getAttrForRegistration())
-                metadata_att_name = thisExperiment.getAttrForRegistration()
+                metadata_attr_name = thisExperiment.getAttrForRegistration()
             else:
-                tolog("!!FAILED!!1234!! Did not get an experiment object from the factory")
-            re_tobeset = re.compile('\<metadata att\_name\=\"%s\" att\_value\=\"([a-zA-Z0-9-]+)\-surltobeset\"\/\>' % metadata_att_name)
+                metadata_attr_name = "surl"
+            re_tobeset = re.compile('\<metadata att\_name\=\"%s\" att\_value\=\"([a-zA-Z0-9-]+)\-surltobeset\"\/\>' % (metadata_attr_name))
         for line in node_xml_list:
             tobeset = re_tobeset.search(line)
             if tobeset:

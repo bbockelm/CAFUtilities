@@ -189,6 +189,12 @@ class JobLog:
         # the cmtconfig is needed by at least the xrdcp site mover
         cmtconfig = getCmtconfig(job.cmtconfig)
 
+        # for backwards compatibility
+        try:
+            experiment = job.experiment
+        except:
+            experiment = "unknown"
+
         # create the xml needed for the registration
         WDTxml = "%s.xml" % (job.newDirNM)
         try:
@@ -214,7 +220,7 @@ class JobLog:
     
             try:
                 rc, pilotErrorDiag, rf, rs, N_filesNormalStageOut, N_filesAltStageOut = mover.mover_put_data("xmlcatalog_file:%s" % (WDTxml),\
-                                                                  dsname, site.sitename, ub=dq2url, analysisJob=analyJob,\
+                                                                  dsname, site.sitename, ub=dq2url, analysisJob=analyJob, scopeLog=job.scopeLog,\
                                                                   testLevel=self.__testLevel, proxycheck=self.__proxycheckFlag, spsetup=job.spsetup,\
                                                                   token=job.destinationDBlockToken, pinitdir=self.__pilot_initdir, datasetDict=None,\
                                                                   prodSourceLabel=job.prodSourceLabel, outputDir=self.__outputDir, jobId=job.jobId,\
@@ -460,6 +466,7 @@ class JobLog:
                         jobReport = getJobReport(fname)
                 else:
                     jobReport = ""
+
                 if jobReport != "":
                     logMsg += jobReport
                 else:
@@ -492,6 +499,7 @@ class JobLog:
 
         # remove duplicated warning/error messages
         logMsg = removeLEDuplicates(logMsg)
+
         return logMsg
 
     def getXMLAndWorkdir(self, jr, siteWorkdir, jobWorkdir, newDirNM, jobId):
@@ -671,24 +679,8 @@ class JobLog:
                     # strXML now contains all the xml for all output files and log
             else:
                 tolog("!!WARNING!!1600!! Failed to add metadata: %d" % (ec))
-
-
-            #Mancinelli
-            # add experiment specific metadata to final metadata.xml
-
-            #if expSpecificMetadata != "" and expSpecificMetadata != None:
-            #    try:
-            #        f = open(fname, 'w')
-            #        f.write(expSpecificMetadata)
-            #        f.close()
-            #        strXML += expSpecificMetadata
-            #        tolog("Added experiment specific metadata to metadata file %s" % fname)
-            #   except Exception, e:
-            #       tolog("Failed to add experiment specific metadata to metadata file: %s" % str(e))
-
         else:
             tolog("!!WARNING!!2999!! Failed to find metadata file, expect job to eventually fail with ddm: Adder._updateOutputs() could not get GUID/LFN/MD5/FSIZE")
- 
 
         # add the metadata about log file to special NG/CERNVM file
         fname = os.path.join(siteWorkdir, outputFilesXML)
@@ -775,7 +767,6 @@ class JobLog:
         jr = job recovery
         ra = recovery attempt
         """
-
         tc_0 = os.times()
         transferAdditional = False
 
@@ -792,22 +783,22 @@ class JobLog:
         # is it a user analysis job?
         analyJob = self.isAnalyJob(site.sitename)
 
-        #Mancinelli
-        thisExperiment = getExperiment(experiment)
-        if thisExperiment:
-            tolog("JobLog will serve experiment: %s" % (thisExperiment.getExperiment()))
-            try:
-                expSpecificMetadata = thisExperiment.getExpSpecificMetadata(job, workdir)
-            except Exception, e:
-                tolog("WARNING!! Caught exception in getAdditionalMetadata: %s" % (e))
-        else:
-            tolog("!!FAILED!!1234!! Did not get an experiment object from the factory")
-
         # build log extracts
         logMsg = self.buildLogExtracts(job, workdir, analyJob)
 
+        # get the experiment object
+        thisExperiment = getExperiment(experiment)
+
+        # Mancinelli
+        # get expriment specific metadata
+        try:
+            expSpecificMetadata = thisExperiment.getExpSpecificMetadata(job, workdir)
+        except Exception, e:
+            tolog("!!WARNING!!1211!! Caught exception in getAdditionalMetadata: %s" % (e))
+            expSpecificMetadata = ""
+ 
         # remove known redundant files and directories
-        self.rmRedundants(workdir)
+        thisExperiment.rmRedundants(workdir)
 
         # remove the soft link to the payload stdout
         self.removeSoftLink(job.jobPars, job.stdout, site.workdir)
@@ -926,11 +917,11 @@ class JobLog:
         if readpar('region') == 'Nordugrid' and job.result[0] == 'failed':
             self.transferLogExtracts(logMsg)
 
+
         # update the SURLs info
         if strXML and strXML != "":
             tolog("Updating metadata XML with SURLs prior to PanDA server update")
-            #Mancinelli: added experiment argument to call
-            strXML = updateXMLWithSURLs("CMS", strXML, site.workdir, job.jobId, self.__jobrec) # do not use format 'NG' here (even for NG)
+            strXML = updateXMLWithSURLs(experiment, strXML, site.workdir, job.jobId, self.__jobrec) # do not use format 'NG' here (even for NG)
             tolog("Updated XML:\n%s" % (strXML))
 
             # replace the metadata-<jobId>.xml file
@@ -999,6 +990,7 @@ class JobLog:
 
     def updatePandaServer(self, job, site, workerNode, port, xmlstr=None, spaceReport=False, log=None, ra=0, jr=False, schedulerID=None, pilotID=None, updateServer=True, stdout_tail="", additionalMetadata=None):
         """ Update the PanDA server """
+
         # create and instantiate the client object
         from PandaServerClient import PandaServerClient
         client = PandaServerClient(pilot_version=self.__pilot_version, \
@@ -1018,7 +1010,7 @@ class JobLog:
         Transfer additional CERNVM files for CERNVM to the intermediate storage location
         where it will be read by special tool responsible for final SE transfers
         """
-		    
+    
         status = True
         error = PilotErrors()
         pilotErrorDiag = ""
@@ -1050,6 +1042,12 @@ class JobLog:
 
         # the cmtconfig is needed by at least the xrdcp site mover
         cmtconfig = getCmtconfig(job.cmtconfig)
+
+        # for backwards compatibility
+        try:
+            experiment = job.experiment
+        except:
+            experiment = "unknown"
 
         # create the xml needed for the registration
         filename_xml = "CERNVM.xml"

@@ -69,7 +69,27 @@ class replica:
     filesize = None
     csumvalue = None
 
-def get_data(job, jobSite, ins, stageinTries, analysisJob=False, usect=True, pinitdir="", proxycheck=True, inputDir="", workDir="", experiment=""):
+def createZippedDictionary(list1, list2):
+    """ Created a zipped dictionary from input lists """
+    # list1 = [a1, a2, ..]
+    # list2 = [b1, b2, ..]
+    # -> dict = {a1:b1, a2:b2, ..}
+
+    d = None
+
+    if len(list1) == len(list2):
+        try:
+            d = dict(zip(list1, list2))
+        except Exception,e:
+            tolog("Warning: Dictionary creation failed: %s" % str(e))
+        else:
+            tolog("Created dictionary: %s" % str(d))
+    else:
+        tolog("Warning: Cannot create zipped dictionary using: list1=%s, list2=%s (different lengths)" % (str(list1), str(list2)))
+
+    return d
+
+def get_data(job, jobSite, ins, stageinTries, analysisJob=False, usect=True, pinitdir="", proxycheck=True, inputDir="", workDir=""):
     """ call the mover and stage-in input files """
 
     error = PilotErrors()
@@ -86,14 +106,9 @@ def get_data(job, jobSite, ins, stageinTries, analysisJob=False, usect=True, pin
     # if mover_get_data() fails to create a TURL based PFC, the returned statusPFCTurl will be False, True if succeeded and None if not used
     statusPFCTurl = None
 
-    # get the local access dictionary
-    try:
-        accessDict = dict(zip(job.inFiles, job.prodDBlockToken))
-    except Exception,e:
-        tolog("Warning: access dictionary creation failed: %s" % str(e))
-        accessDict = None
-    else:
-        tolog("Created access dictionary: %s" % str(accessDict))
+    # create the local access and scope dictionaries
+    access_dict = createZippedDictionary(job.inFiles, job.prodDBlockToken)
+    scope_dict = createZippedDictionary(job.inFiles, job.scopeIn)
 
     # create the handler for the potential DBRelease file (the DBRelease file will not be transferred on CVMFS)
     from DBReleaseHandler import DBReleaseHandler
@@ -104,6 +119,8 @@ def get_data(job, jobSite, ins, stageinTries, analysisJob=False, usect=True, pin
         dsdict = {}
         if job.realDatasetsIn and len(job.realDatasetsIn) == 1 and job.realDatasetsIn[0] != 'NULL':
             dsname = job.realDatasetsIn[0]
+            if not dsdict.has_key(dsname): dsdict[dsname] = []
+            dsdict[dsname].append(job.inFiles[0])
         elif job.realDatasetsIn and len(job.realDatasetsIn) > 1:
             for i in range(len(job.inFiles)):
                 inFile = job.inFiles[i]
@@ -115,9 +132,9 @@ def get_data(job, jobSite, ins, stageinTries, analysisJob=False, usect=True, pin
             mover_get_data(ins, job.workdir, jobSite.sitename, stageinTries, ub=jobSite.dq2url, dsname=dsname,\
                            dsdict=dsdict, guids=job.inFilesGuids, analysisJob=analysisJob, usect=usect, pinitdir=pinitdir,\
                            proxycheck=proxycheck, spsetup=job.spsetup, tokens=job.dispatchDBlockToken, userid=job.prodUserID,\
-                           accessdict=accessDict, inputDir=inputDir, jobId=job.jobId, DN=job.prodUserID, workDir=workDir,\
-                           jobDefId=job.jobDefinitionID, dbh=dbh, jobPars=job.jobPars, cmtconfig=job.cmtconfig,\
-                           filesizeIn=job.filesizeIn, checksumIn=job.checksumIn, transferType=job.transferType, experiment=experiment)
+                           access_dict=access_dict, inputDir=inputDir, jobId=job.jobId, DN=job.prodUserID, workDir=workDir,\
+                           scope_dict=scope_dict, jobDefId=job.jobDefinitionID, dbh=dbh, jobPars=job.jobPars, cmtconfig=job.cmtconfig,\
+                           filesizeIn=job.filesizeIn, checksumIn=job.checksumIn, transferType=job.transferType, experiment=job.experiment)
         tolog("Get function finished with exit code %d" % (rc))
 
     except SystemError, e:
@@ -277,12 +294,15 @@ def getInitialTracingReport(userid, sitename, dsname, eventType, analysisJob, jo
     tolog("Tracing report initialised with: %s" % str(report))
     return report
 
-def getFileInfo(lfchost, region, ub, guids, dsname, dsdict, lfns, pinitdir, analysisJob, tokens, DN, sitemover, error, workdir, dbh, DBReleaseIsAvailable, pfc_name="PoolFileCatalog.xml", filesizeIn=[], checksumIn=[], thisExperiment=None):
+def getFileInfo(lfchost, region, ub, guids, dsname, dsdict, lfns, pinitdir, analysisJob, tokens, DN, sitemover, error, workdir, dbh, DBReleaseIsAvailable, \
+                scope_dict, pfc_name="PoolFileCatalog.xml", filesizeIn=[], checksumIn=[], thisExperiment=None):
     """ Build the file info dictionary """
 
     fileInfoDic = {}
     replicas_dic = {}
     totalFileSize = 0L    
+
+    tolog("Preparing to build paths for input files")
 
     # get the site information object
     si = getSiteInformation(thisExperiment.getExperiment())
@@ -291,12 +311,29 @@ def getFileInfo(lfchost, region, ub, guids, dsname, dsdict, lfns, pinitdir, anal
     if si.isTier3():
         tolog("Getting file info on a Tier 3 site")
 
-        # create file path to local SE
+        # create file path to local SE (not used for scope based paths)
         path = sitemover.getTier3Path(dsname, DN) # note: dsname will only be correct for lib files, otherwise fix dsdict, currently empty for single lib file input?
         file_nr = -1
-        for thisfile in lfns:
+        for lfn in lfns:
             file_nr += 1
-            se_path = os.path.join(path, thisfile)
+
+            # use scope based path if possible
+            if scope_dict and readpar('userucio').lower() == "true":
+            #if scope_dict:
+                try:
+                    spacetoken = tokens[file_nr]
+                except:
+                    spacetoken = ""
+                try:
+                    scope = scope_dict[lfn]
+                except Exception, e:
+                    tolog("!!WARNING!!1232!! Failed to extract scope from scope dictionary for file %s: %s" % (lfn, str(scope_dict)))
+                    tolog("Defaulting to old path style (based on dsname)")
+                    se_path = os.path.join(path, lfn)
+                else:
+                    se_path = sitemover.getFullPath(scope, spacetoken, lfn, analysisJob, "")
+            else:
+                se_path = os.path.join(path, lfn)
 
             # get the file info
             ec, pilotErrorDiag, fsize, fchecksum = sitemover.getLocalFileInfo(se_path, csumtype="default")
@@ -314,11 +351,9 @@ def getFileInfo(lfchost, region, ub, guids, dsname, dsdict, lfns, pinitdir, anal
     else:
         # get the PFC from the proper source
         ec, pilotErrorDiag, xml_from_PFC, xml_source, replicas_dic = \
-            getPoolFileCatalog(lfchost, ub, guids, dsname, lfns, pinitdir, analysisJob, tokens,\
-                               workdir, dbh, DBReleaseIsAvailable, pfc_name=pfc_name, thisExperiment=thisExperiment)
+            getPoolFileCatalog(lfchost, ub, guids, dsname, lfns, pinitdir, analysisJob, tokens, workdir, dbh,\
+                               DBReleaseIsAvailable, scope_dict, sitemover, pfc_name=pfc_name, thisExperiment=thisExperiment)
         try:
-            tolog("aria2c. Len replicas_dic: %d" % len(replicas_dic))
-            tolog("aria2c: %s" % sitemover.getID())
             if os.path.basename(sitemover.getID()) == 'aria2c':
                 sitemover.surls2metalink(replicas_dic, 'AllInput.xml.meta4')
         except Exception, e:
@@ -770,9 +805,9 @@ def shouldPFC4TURLsBeCreated(analysisJob, transferType):
             tolog("newPrefix = %s (should be empty if TURL based PFC is required)" % (newPrefix))
 
             # PFC should be TURL based for file stager or for direct i/o if old/new prefices are not specified
-            # if not useCT and useFileStager and directIn and oldPrefix == "" and newPrefix == "":
-            # useFileStager thus need not be set (or used here), but directIn must be True
-            if not useCT and directIn and oldPrefix == "" and newPrefix == "":
+            if not useCT and useFileStager and directIn and oldPrefix == "" and newPrefix == "":
+                # useFileStager thus need not be set (or used here), but directIn must be True
+                # if not useCT and directIn and oldPrefix == "" and newPrefix == "":
                 status = True
         else:
             if transferType == "direct":
@@ -1173,7 +1208,8 @@ def mover_get_data(lfns,
                    inputDir="",
                    jobId=None,
                    jobDefId="",
-                   accessdict=None,
+                   access_dict=None,
+                   scope_dict=None,
                    workDir="",
                    DN=None,
                    dbh=None,
@@ -1250,7 +1286,7 @@ def mover_get_data(lfns,
     # format: fileInfoDic[file_nr] = (guid, gpfn, fsize, fchecksum)
     ec, pilotErrorDiag, fileInfoDic, totalFileSize, replicas_dic = \
         getFileInfo(lfchost, region, ub, guids, dsname, dsdict, lfns, pinitdir, analysisJob, tokens, DN, sitemover, error, path, dbh, DBReleaseIsAvailable,\
-                    pfc_name=pfc_name, filesizeIn=filesizeIn, checksumIn=checksumIn, thisExperiment=thisExperiment)
+                    scope_dict, pfc_name=pfc_name, filesizeIn=filesizeIn, checksumIn=checksumIn, thisExperiment=thisExperiment)
     if ec != 0:
         return ec, pilotErrorDiag, statusPFCTurl, N_filesWithoutFAX, N_filesWithFAX, usedFAXandDirectIO
 
@@ -1309,7 +1345,7 @@ def mover_get_data(lfns,
 
         # extract the file info for the first file in the dictionary
         guid, gpfn, lfn, fsize, fchecksum = extractInputFileInfo(fileInfoDic[0], lfns)
-        file_access = getFileAccess(accessdict, lfn)
+        file_access = getFileAccess(access_dict, lfn)
         dsname = getDataset(lfn, dsdict)
 
         # perform stage-in using the sitemover wrapper method
@@ -1359,7 +1395,7 @@ def mover_get_data(lfns,
             # get the number of replica retries
             get_RETRY_replicas = getNumberOfReplicaRetries(createdPFCTURL, replica_dictionary, guid)
 
-            file_access = getFileAccess(accessdict, lfn)
+            file_access = getFileAccess(access_dict, lfn)
 
             # loop over get function to allow for multiple get attempts for a file
             will_use_direct_io = False
@@ -1723,7 +1759,7 @@ def getSpaceTokenForFile(filename, _token, logFile, file_nr, fileListLength):
     return _token_file
 
 def sitemover_put_data(sitemover, error, workDir, jobId, pfn, ddm_storage, dsname, sitename, analysisJob, testLevel, pinitdir, proxycheck, _token_file, lfn,\
-                       guid, spsetup, userid, report, cmtconfig, prodSourceLabel, outputDir, DN, fsize, checksum, logFile, _attempt, experiment, alt=False):
+                       guid, spsetup, userid, report, cmtconfig, prodSourceLabel, outputDir, DN, fsize, checksum, logFile, _attempt, experiment, scope, alt=False):
     """ """
 
     s = 0
@@ -1767,6 +1803,30 @@ def sitemover_put_data(sitemover, error, workDir, jobId, pfn, ddm_storage, dsnam
 
     return s, pilotErrorDiag, r_gpfn, r_fsize, r_fchecksum, r_farch
 
+
+def getScope(lfn, file_nr, scopeOut, scopeLog):
+    """ Get the scope corresponding to a given LFN """
+
+    # grab the scope from the proper place
+    if ".log." in lfn:
+        try:
+            scope = scopeLog[0]
+        except Exception, e:
+            scope = ""
+            tolog("!!WARNING!!4323!! Failed to extract scope for log file from list: %s, %s" % (str(scopeLog), e))
+        else:
+            tolog("Using scope \'%s\' for log file" % (scope))
+    else:
+        try:
+            scope = scopeOut[file_nr]
+        except Exception, e:
+            scope = ""
+            tolog("!!WARNING!!4323!! Failed to extract scope for file number %d from list: %s, %s" % (file_nr, str(scopeOut), e))
+        else:
+            tolog("Using scope \'%s\' for file number %d" % (scope, file_nr))
+
+    return scope
+
 def mover_put_data(outputpoolfcstring,
                    pdsname,
                    sitename,
@@ -1794,6 +1854,8 @@ def mover_put_data(outputpoolfcstring,
                    recoveryWorkDir=None,
                    experiment="ATLAS",
                    stageoutTries=2,
+                   scopeOut=None,
+                   scopeLog=None,
                    fileDestinationSE=None):
     """
     Move the output files in the pool file catalog to the local storage, change the pfns to grid accessable pfns.
@@ -1850,25 +1912,32 @@ def mover_put_data(outputpoolfcstring,
     sitemover = getSiteMover(copycmd, setup)
     tolog("Got site mover: %s" % str(sitemover))
 
-    # get the file list from the PFC
-    fileList = getFileList(outputpoolfcstring)
+    # get the file list from the PFC (DOM object list)
+    file_list = getFileList(outputpoolfcstring)
+
+    # create the scope dictionary
+    # scope_dict = createZippedDictionary(file_list, job.scopeIn)
 
     # get the site information object
     si = getSiteInformation(experiment)
 
     # get the list of space tokens
-    tokenList = getSpaceTokenList(token, listSEs, jobCloud, analysisJob, len(fileList), si)
+    token_list = getSpaceTokenList(token, listSEs, jobCloud, analysisJob, len(file_list), si)
     alternativeTokenList = None
 
     # loop over all files to be staged in
     fail = 0
     file_nr = -1
-    for thisfile in fileList:
+    for thisfile in file_list:
         file_nr += 1
 
         # get the file names and guid
         filename, lfn, pfn, guid = getFilenamesAndGuid(thisfile)
+        # note: pfn is the full path to the local file
         tolog("Preparing copy for %s to %s using %s" % (pfn, ddm_storage, copycmd))
+
+        # get the corresponding scope
+        scope = getScope(lfn, file_nr, scopeOut, scopeLog)
 
         # update the current file state
         updateFileState(filename, workDir, jobId, mode="file_state", state="not_transferred")
@@ -1881,7 +1950,7 @@ def mover_put_data(outputpoolfcstring,
         report['dataset'] = dsname_report
 
         # get the currect space token for the given file
-        _token_file = getSpaceTokenForFile(filename, tokenList, logFile, file_nr, len(fileList))
+        _token_file = getSpaceTokenForFile(filename, token_list, logFile, file_nr, len(file_list))
 
         # get the file size and checksum if possible
         fsize, checksum = getFileSizeAndChecksum(lfn, outputFileInfo)
@@ -1915,7 +1984,7 @@ def mover_put_data(outputpoolfcstring,
                                                                                           sitename, analysisJob, testLevel, pinitdir, proxycheck,\
                                                                                           _token_file, lfn, guid, spsetup, userid, report, cmtconfig,\
                                                                                           prodSourceLabel, outputDir, DN, fsize, checksum, logFile,\
-                                                                                          _attempt, experiment)
+                                                                                          _attempt, experiment, scope)
             # increase normal stage-out counter if file was staged out
             if s == 0:
                 N_filesNormalStageOut += 1
@@ -1952,11 +2021,11 @@ def mover_put_data(outputpoolfcstring,
 
                         # which space token should be used? Primarily use the requested space token primarily (is it available at the alternative SE?)
                         # otherwise use the default space token of the alternative SE
-                        alternativeTokenList = getSpaceTokenList(token, alternativeListSEs, jobCloud, analysisJob, len(fileList), si, alt=True)
+                        alternativeTokenList = getSpaceTokenList(token, alternativeListSEs, jobCloud, analysisJob, len(file_list), si, alt=True)
                         tolog("Created alternative space token list: %s" % str(alternativeTokenList))
 
                         # get the currect space token for the given file
-                        _token_file = getSpaceTokenForFile(filename, alternativeTokenList, logFile, file_nr, len(fileList))
+                        _token_file = getSpaceTokenForFile(filename, alternativeTokenList, logFile, file_nr, len(file_list))
                         tolog("Using alternative space token: %s" % (_token_file))
 
                         # perform the stage-out
@@ -1965,7 +2034,7 @@ def mover_put_data(outputpoolfcstring,
                                                                                                       sitename, analysisJob, testLevel, pinitdir, proxycheck,\
                                                                                                       _token_file, lfn, guid, spsetup, userid, report, cmtconfig,\
                                                                                                       prodSourceLabel, outputDir, DN, fsize, checksum, logFile,\
-                                                                                                      _attempt, experiment)
+                                                                                                      _attempt, experiment, scope)
                         if _s == 0:
                             # do no further stage-out (prevent another attempt, but allow e.g. chirp transfer below, as well as
                             # return a zero error code from this function, also for job recovery returning s=0 will not cause job recovery
@@ -2081,11 +2150,11 @@ def getSpaceTokenList(token, listSEs, jobCloud, analysisJob, fileListLength, si,
 
     # no space tokens for tier 3s
     if not si.isTier3():
-        tokenList = getProperSpaceTokenList(token, listSEs, jobCloud, analysisJob, alt=alt)
+        token_list = getProperSpaceTokenList(token, listSEs, jobCloud, analysisJob, alt=alt)
     else:
-        tokenList = None
+        token_list = None
 
-    return tokenList
+    return token_list
 
 def getProperSpaceTokenList(spacetokenlist, listSEs, jobCloud, analysisJob, alt=False):
     """ return a proper space token list and perform space token verification """
@@ -2339,7 +2408,7 @@ def getDestinationDDMStorage(analysisJob):
     tolog("getDDMStorage() will return: %s" % (path))
     return path
 
-def getReplicasDictionary(replicas_list, filename_dic):
+def getReplicasDictionary(replicas_list, lfn_dict):
     """ Create a dictionary of the guids and replica objects """
 
     error = PilotErrors()
@@ -2359,8 +2428,8 @@ def getReplicasDictionary(replicas_list, filename_dic):
         # turn could be caused by a large distance between the client and server, or if there were many
         # guids in the batch call. should be fixed in later LFC server versions (from 1.7.0)
         if rep.sfn == "":
-            if filename_dic.has_key(guid):
-                filename = filename_dic[guid]
+            if lfn_dict.has_key(guid):
+                filename = lfn_dict[guid]
             else:
                 tolog("No such guid, continue")
                 continue
@@ -2491,17 +2560,16 @@ def foundMatchedCopyprefixReplica(sfn, pfroms, ptos):
 
     return found_match
 
-def getLFCFileList(guid_token_dict, lfchost, analysisJob, workdir, filename_dic=None):
-    """ build the LFC file list using lfc_getreplicas """
+def getLFCFileList(guid_token_dict, lfchost, analysisJob, workdir, lfn_dict=None):
+    """ Build the LFC file list using lfc_getreplicas """
 
     from SiteMover import SiteMover
 
-    xml_from_PFC = ""
     ec = 0
     pilotErrorDiag = ""
     xml_source = "LFC"
-    file_dic = {}
-    replicas_dic = None
+    file_dict = {}
+    replicas_dict = None
 
     error = PilotErrors()
 
@@ -2509,7 +2577,7 @@ def getLFCFileList(guid_token_dict, lfchost, analysisJob, workdir, filename_dic=
         import lfc
     except Exception, e:
         pilotErrorDiag = "getLFCFileList() could not import lfc module: %s" % str(e)
-        return error.ERR_GETLFCIMPORT, pilotErrorDiag, xml_from_PFC, xml_source, replicas_dic
+        return error.ERR_GETLFCIMPORT, pilotErrorDiag, file_dict, xml_source, replicas_dict
 
     tolog("Successfully imported LFC module")
     tolog("Get function using LFC_HOST: %s" % (lfchost))
@@ -2528,7 +2596,7 @@ def getLFCFileList(guid_token_dict, lfchost, analysisJob, workdir, filename_dic=
         pilotErrorDiag = "Get data failed: copyprefix not set"
         tolog("!!FAILED!!2999!! %s" % (pilotErrorDiag))
         tolog("Site mover get_data finished (failed)")
-        return error.ERR_STAGEINFAILED, pilotErrorDiag, xml_from_PFC, xml_source, replicas_dic
+        return error.ERR_STAGEINFAILED, pilotErrorDiag, file_dict, xml_source, replicas_dict
     else:
         tolog("Read copyprefix: %s" % (copyprefix))
 
@@ -2560,29 +2628,29 @@ def getLFCFileList(guid_token_dict, lfchost, analysisJob, workdir, filename_dic=
         ec = -1
 
     if ec != 0:
-        return ec, pilotErrorDiag, file_dic, xml_source, replicas_dic
+        return ec, pilotErrorDiag, file_dict, xml_source, replicas_dict
     else:
         # the replicas_list is a condense list containing all guids and all sfns, one after the other.
         # there might be several identical guids followed by the corresponding sfns. we will not reformat
         # this list into a sorted dictionary
-        # replicas_dic[guid] = [rep1, rep2] where repN is an object of class replica (defined above)
+        # replicas_dict[guid] = [rep1, rep2] where repN is an object of class replica (defined above)
         try:
-            ec, pilotErrorDiag, replicas_dic = getReplicasDictionary(replicas_list, filename_dic)
+            ec, pilotErrorDiag, replicas_dict = getReplicasDictionary(replicas_list, lfn_dict)
         except Exception, e:
             pilotErrorDiag = "%s" % str(e)
             tolog("!!FAILED!!2999!! %s" % (pilotErrorDiag))
-            return error.ERR_FAILEDLFCGETREP, pilotErrorDiag, xml_from_PFC, xml_source, replicas_dic
+            return error.ERR_FAILEDLFCGETREP, pilotErrorDiag, file_dict, xml_source, replicas_dict
         else:
             if ec != 0:
                 tolog("!!FAILED!!2999!! %s" % (pilotErrorDiag))
-                return ec, pilotErrorDiag, xml_from_PFC, xml_source, replicas_dic
+                return ec, pilotErrorDiag, file_dict, xml_source, replicas_dict
 
         # handle copyprefix lists
         pfroms, ptos = getCopyprefixLists(copyprefix)
         tolog("Copyprefix lists: %s, %s" % (str(pfroms), str(ptos)))
 
         # loop over all guids and correct empty values
-        for guid in replicas_dic.keys():
+        for guid in replicas_dict.keys():
             tolog("Processing guid %s" % (guid))
 
             # get the space token if available
@@ -2603,7 +2671,7 @@ def getLFCFileList(guid_token_dict, lfchost, analysisJob, workdir, filename_dic=
                 _listSEs = listSEs
 
             # put any tape resident replicas at the end of the list unless requested with the dispatchDBlockToken
-            replicas = replicas_dic[guid]
+            replicas = replicas_dict[guid]
             if len(replicas) > 1 or _token:
                 replicas = sortReplicas(replicas, _token)
             tolog("Sorted replica list:")
@@ -2683,42 +2751,110 @@ def getLFCFileList(guid_token_dict, lfchost, analysisJob, workdir, filename_dic=
                     dumpOrderedItems(matched_replicas)
 
                 # always select the first match which might be from the randomized list (DBRelease files only)
-                file_dic[guid] = matched_replicas[0]
-                tolog("Will use primary replica: %s" % file_dic[guid])
+                file_dict[guid] = matched_replicas[0]
+                tolog("Will use primary replica: %s" % file_dict[guid])
 
                 # backup the matched replicas to file since the primary replica might not be available
                 # in that case, switch to the secondary replica, and so on
                 storeMatchedReplicas(guid, matched_replicas, workdir)
 
             else:
-                if filename_dic.has_key(guid):
-                    if "DBRelease" in filename_dic[guid]:
-                        pilotErrorCode = "%s has not been transferred yet (guid=%s)" % (filename_dic[guid], guid)
+                if lfn_dict.has_key(guid):
+                    if "DBRelease" in lfn_dict[guid]:
+                        pilotErrorCode = "%s has not been transferred yet (guid=%s)" % (lfn_dict[guid], guid)
                         ec = error.ERR_DBRELNOTYETTRANSFERRED
                     else:
-                        pilotErrorDiag = "Replica with guid %s not found at %s (or in the se list: %s)" % (guid, copyprefix, str(_listSEs))
-                        ec = error.ERR_REPNOTFOUND
+                        if (readpar('copytool').lower() == "fax" and readpar('copytoolin') == "") or readpar('copytoolin').lower() == "fax":
+                            # special use case for FAX; the file might not be available locally, so do not fail here because no local copy can be found
+                            # use a 'fake' replica for now, ie use the last known SURL, irrelevant anyway since the SURL will eventually come from FAX
+                            file_dict[guid] = sfn
+                            tolog("Will use SURL=%s for the replica dictionary (will be overwritten later by FAX once it is known)" % (sfn))
+                            matched_replicas.append(sfn)
+                            matched_replicas = removeDuplicates(matched_replicas)
+                            storeMatchedReplicas(guid, matched_replicas, workdir)
+                            ec = 0
+                        else:
+                            pilotErrorDiag = "(1) Replica with guid %s not found at %s (or in the se list: %s)" % (guid, copyprefix, str(_listSEs))
+                            ec = error.ERR_REPNOTFOUND
                 else:
-                    pilotErrorDiag = "Replica with guid %s not found at %s (or in the se list: %s)" % (guid, copyprefix, str(_listSEs))
+                    pilotErrorDiag = "(2) Replica with guid %s not found at %s (or in the se list: %s)" % (guid, copyprefix, str(_listSEs))
                     ec = error.ERR_REPNOTFOUND
                 tolog("!!FAILED!!2999!! %s" % (pilotErrorDiag))
                 tolog("Mover getLFCFileList finished (failed): replica not found")
-                return ec, pilotErrorDiag, xml_from_PFC, xml_source, replicas_dic
+                return ec, pilotErrorDiag, file_dict, xml_source, replicas_dict
 
-    return ec, pilotErrorDiag, file_dic, xml_source, replicas_dic
+    return ec, pilotErrorDiag, file_dict, xml_source, replicas_dict
 
-def createFileDicsForLFC(guids, lfns, tokens, DBReleaseIsAvailable, dbh):
-    """ Create proper file dictionaries for the LFC """
+def getRucioFileList(scope_dict, guid_token_dict, lfn_dict, analysisJob, sitemover):
+    """ Building the file list using scope information """
+
+    ec = 0
+    pilotErrorDiag = ""
+    xml_source = "Rucio"
+    file_dict = {}
+    replicas_dict = {}
+
+    error = PilotErrors()
+
+    # Formats (input):
+    # scope_dict = { "lfn1": "scope1", .. }
+    # guid_token_dict = { "guid1": "spacetoken1", .. }
+    # lfn_dict = { "guid1": "lfn1", .. }
+    # Formats (output):
+    # file_dict = { "guid1": "pfn1", .. }
+    # replicas_dict = { "guid1": ["pfn-rep1"], .. }
+    # Note: since a predeterministic path is used, and no LFC file lookup, there is only one replica per guid in the replicas dictionary,
+    # i.e. the replicas dictionary (replicas_dict) can be constructed from the file dictionary (file_dict)
+
+    # Get the guids list and loop over it
+    guid_list = guid_token_dict.keys()
+    tolog("file_dict=%s"%str(file_dict))
+    tolog("replicas_dict=%s"%str(replicas_dict))
+    tolog("guid_list=%s"%str(guid_list))
+    for guid in guid_list:
+        try:
+            # Get the LFN
+            lfn = lfn_dict[guid]
+
+            # Get the scope
+            scope = scope_dict[lfn]
+
+            # Get the space token descriptor (if any)
+            spacetoken = guid_token_dict[guid]
+
+            # Construct the PFN
+            pfn = sitemover.getFullPath(scope, spacetoken, lfn, analysisJob, "")
+        except Exception, e:
+            ec = error.ERR_NOPFC
+            pilotErrorDiag = "Exception caught while trying to build Rucio based file dictionaries: %s" % (e)
+            tolog("!!WARNING!!2332!! %s" % (pilotErrorDiag))
+        else:
+            # Build the dictionaries
+            tolog("guid=%s" % str(guid))
+            try:
+                file_dict[guid] = pfn
+            except Exception, e:
+                tolog("1:%s" % (e))
+            try:
+                replicas_dict[guid] = [pfn]
+            except Exception, e:
+                tolog("2:%s" % (e))
+
+    tolog("done xxx")
+    return ec, pilotErrorDiag, file_dict, xml_source, replicas_dict
+
+def createFileDictionaries(guids, lfns, tokens, DBReleaseIsAvailable, dbh):
+    """ Create proper file dictionaries """
     # do not include the DBRelease if not needed
 
     # lfn dictionary with guids as keys
-    filename_dic = dict(zip(guids, lfns))
+    lfn_dict = dict(zip(guids, lfns))
 
     # token dictionary with guids as keys
     if len(guids) == len(tokens):
-        guid_token_dic = dict(zip(guids, tokens))
+        guid_token_dict = dict(zip(guids, tokens))
     else:
-        guid_token_dic = {}
+        guid_token_dict = {}
         if len(tokens) > 1:
             tolog("Warning: len(guids) = %d ne len(tokens) = %d, guids = %s, tokens = %s" %\
                   (len(guids), len(tokens), str(guids), str(tokens)))
@@ -2726,39 +2862,59 @@ def createFileDicsForLFC(guids, lfns, tokens, DBReleaseIsAvailable, dbh):
     # should the DBRelease file be removed?
     if DBReleaseIsAvailable:
         for guid in guids:
-            if filename_dic.has_key(guid):
-                lfn = filename_dic[guid]
+            if lfn_dict.has_key(guid):
+                lfn = lfn_dict[guid]
                 if isDBReleaseFile(dbh, lfn):
                     # remove the DBRelease file from the dictionaries
-                    del filename_dic[guid]
-                    del guid_token_dic[guid]
-                    tolog("Removed locally available DBRelease file %s / %s from LFC file dictionaries" % (lfn, guid))
+                    del lfn_dict[guid]
+                    del guid_token_dict[guid]
+                    tolog("Removed locally available DBRelease file %s / %s from file dictionaries" % (lfn, guid))
                     # no break here since the file list can contain duplicate DBRelease
             else:
                 tolog("Encountered deleted key: %s" % (guid))
-    return filename_dic, guid_token_dic
+    return lfn_dict, guid_token_dict
 
-def getPoolFileCatalog(lfchost, ub, guids, dsname, lfns, pinitdir, analysisJob, tokens, workdir, dbh, DBReleaseIsAvailable, pfc_name="PoolFileCatalog.xml", thisExperiment=None):
+def getPoolFileCatalog(lfchost, ub, guids, dsname, lfns, pinitdir, analysisJob, tokens, workdir, dbh, DBReleaseIsAvailable, scope_dict, sitemover,\
+                       pfc_name="PoolFileCatalog.xml", thisExperiment=None):
     """ get the PFC from the proper source """
+    # In LCG land use lfc_getreplica to get the pfn in order to create the PoolFileCatalog, unless scope is used to create predeterministic path
 
     xml_from_PFC = ""
     pilotErrorDiag = ""
     ec = 0
     replicas_dic = None
 
-    # In LCG land use lfc_getreplica to get the pfn in order to create the PoolFileCatalog
     xml_source = "[undefined]"
     region = readpar('region')
-    tolog("Region: %s" % (region))
     tolog("Guids:")
     dumpOrderedItems(guids)
 
-    # get proper file dictionaries for the LFC (do not include the DBRelease if not needed)
-    filename_dic, guid_token_dic = createFileDicsForLFC(guids, lfns, tokens, DBReleaseIsAvailable, dbh)
+    # get proper file dictionaries (do not include the DBRelease if not needed)
+    lfn_dict, guid_token_dict = createFileDictionaries(guids, lfns, tokens, DBReleaseIsAvailable, dbh)
+
+    # update booleans if Rucio is used and scope dictionary is set
+    if scope_dict and readpar('userucio').lower() == "true":
+#    if scope_dict:
+        tolog("Resetting file lookup boolean (LFC will not be queried)")
+        use_rucio = True
+        thisExperiment.doFileLookups(False)
+    else:
+        use_rucio = False
+        thisExperiment.doFileLookups(True)
 
     if thisExperiment.willDoFileLookups():
         # get the replica dictionary from the LFC
-        ec, pilotErrorDiag, file_dic, xml_source, replicas_dic = getLFCFileList(guid_token_dic, lfchost, analysisJob, workdir, filename_dic=filename_dic)
+        ec, pilotErrorDiag, file_dic, xml_source, replicas_dic = getLFCFileList(guid_token_dict, lfchost, analysisJob, workdir, lfn_dict=lfn_dict)
+        if ec != 0:
+            return ec, pilotErrorDiag, xml_from_PFC, xml_source, replicas_dic
+        tolog("file_dic = %s" % str(file_dic))
+
+        # create a pool file catalog
+        xml_from_PFC = createPoolFileCatalog(file_dic, pfc_name=pfc_name)
+    elif use_rucio:
+        tolog("Replica dictionaries will be prepared for Rucio")
+        # get the replica dictionary etc using predeterministic paths method
+        ec, pilotErrorDiag, file_dic, xml_source, replicas_dic = getRucioFileList(scope_dict, guid_token_dict, lfn_dict, analysisJob, sitemover)
         if ec != 0:
             return ec, pilotErrorDiag, xml_from_PFC, xml_source, replicas_dic
         tolog("file_dic = %s" % str(file_dic))
@@ -3165,12 +3321,12 @@ def verifyAvailableSpace(totalFileSize, path, error):
 
     return ec, pilotErrorDiag
 
-def getFileAccess(accessdict, lfn):
+def getFileAccess(access_dict, lfn):
     """ Get the special file access info if needed """
 
-    if accessdict:
+    if access_dict:
         try:
-            file_access = accessdict[lfn]
+            file_access = access_dict[lfn]
         except Exception, e:
             tolog("No special file access: %s" % str(e))
             file_access = None
