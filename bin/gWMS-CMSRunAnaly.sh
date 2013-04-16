@@ -33,9 +33,9 @@ sh ./CMSRunAnaly.sh "$@"
 EXIT_STATUS=$?
 
 echo "Starting Stageout"
-./cmscp.py "$PWD/cmsRun-stderr.log\?compressCount\=3\&remoteName\=cmsRun_$CRAB_Id.log" "$CRAB_Dest/cmsRun-stderr.log\?compressCount\=3\&remoteName\=cmsRun_$CRAB_Id.log"  || exit $?
-./cmscp.py "$PWD/cmsRun-stdout.log\?compressCount\=3\&remoteName\=cmsRun_$CRAB_Id.log" "$CRAB_Dest/cmsRun-stdout.log\?compressCount\=3\&remoteName\=cmsRun_$CRAB_Id.log" || exit $?
-./cmscp.py "$PWD/FrameworkJobReport.xml\?compressCount\=3\&remoteName\=cmsRun_$CRAB_Id.log" "$CRAB_Dest/FrameworkJobReport.xml\?compressCount\=3\&remoteName\=cmsRun_$CRAB_Id.log" || exit $?
+./cmscp.py "$PWD/cmsRun-stderr.log?compressCount=3&remoteName=cmsRun_$CRAB_Id.log" "$CRAB_Dest/cmsRun-stderr.log?compressCount=3&remoteName=cmsRun_$CRAB_Id.log"  || exit $?
+./cmscp.py "$PWD/cmsRun-stdout.log?compressCount=3&remoteName=cmsRun_$CRAB_Id.log" "$CRAB_Dest/cmsRun-stdout.log?compressCount=3&remoteName=cmsRun_$CRAB_Id.log" || exit $?
+./cmscp.py "$PWD/FrameworkJobReport.xml?compressCount=3&remoteName=cmsRun_$CRAB_Id.log" "$CRAB_Dest/FrameworkJobReport.xml?compressCount=3&remoteName=cmsRun_$CRAB_Id.log" || exit $?
 OIFS=$IFS
 IFS=" ,"
 for file in $CRAB_localOutputFiles; do
