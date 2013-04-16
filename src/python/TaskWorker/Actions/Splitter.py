@@ -7,7 +7,7 @@ from TaskWorker.DataObjects.Result import Result
 
 
 class Splitter(TaskAction):
-    """Performing the split operation depending on the 
+    """Performing the split operation depending on the
        recevied input and arguments"""
 
     def execute(self, *args, **kwargs):

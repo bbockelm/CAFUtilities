@@ -47,15 +47,14 @@ class Task(dict):
         self['tm_outfiles'] = literal_eval(task[25])
         self['tm_tfile_outfiles'] = literal_eval(task[26])
         self['tm_edm_outfiles'] = literal_eval(task[27])
-        self['tm_data_runs'] = task[28]
-        self['tm_transformation'] = task[29]
+        self['tm_transformation'] = task[28]
         ## We load the arguments one by one here to avoid suprises at a later stage
-        extraargs = literal_eval(task[30])
+        extraargs = literal_eval(task[29])
         self['resubmit_site_whitelist'] = extraargs['siteWhiteList'] if 'siteWhiteList' in extraargs else []
         self['resubmit_site_blacklist'] = extraargs['siteBlackList'] if 'siteBlackList' in extraargs else []
         self['resubmit_ids'] = extraargs['resubmitList'] if 'resubmitList' in extraargs else []
         self['kill_ids'] = extraargs['killList'] if 'killList' in extraargs else []
- 
+
     def __str__(self):
         """Use me to avoiding to vomiting all parameters around.
            This will be annoying for people debugging things."""
