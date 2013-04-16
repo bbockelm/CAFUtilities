@@ -2,6 +2,8 @@
 
 set -x
 
+BASEDIR=$(cd "$(dirname "$0")"; pwd)
+
 ORIGDIR=$PWD
 STARTDIR=$PWD/tmp/runtime
 
@@ -37,6 +39,8 @@ mkdir -p $DBSDIR
 mkdir -p $DLSDIR
 mkdir -p $CRABSERVERDIR
 mkdir -p $CRABCLIENTDIR
+
+cp $BASEDIR/gWMS-CMSRunAnaly.sh $STARTDIR || exit 3
 
 pushd $STARTDIR
 
@@ -84,10 +88,9 @@ pushd CherryPy-3.2.2/
 zip -r $STARTDIR/CRAB3.zip cherrypy || exit 3
 popd
 
-
 echo 'export PATH=`dirname ${BASH_SOURCE[0]}`:$PATH' > setup.sh
 
-tar zcf $ORIGDIR/TaskManagerRun.tar.gz CRAB3.zip setup.sh crab3 crab || exit 4
+tar zcf $ORIGDIR/TaskManagerRun.tar.gz CRAB3.zip setup.sh crab3 crab gWMS-CMSRunAnaly.sh || exit 4
 
 popd
 

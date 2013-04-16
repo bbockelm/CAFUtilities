@@ -8,7 +8,7 @@ JOB Job%(count)d Job.submit
 #SCRIPT POST Job%(count)d dag_bootstrap.sh POSTJOB $RETRY $JOB
 #PRE_SKIP Job%(count)d 3
 RETRY Job%(count)d 3
-VARS Job%(count)d count="%(count)d" runAndLumiMask="%(runAndLumiMask)s" inputFiles="%(inputFiles)s" +desiredSites="\\"%(desiredSites)s\\"" localOutputFiles="%(localOutputFiles)s"
+VARS Job%(count)d count="%(count)d" runAndLumiMask="%(runAndLumiMask)s" inputFiles="%(inputFiles)s" +desiredSites="\\"%(desiredSites)s\\"" +CRAB_localOutputFiles="\\"%(localOutputFiles)s\\""
 
 JOB ASO%(count)d ASO.submit
 VARS ASO%(count)d count="%(count)d" outputFiles="%(remoteOutputFiles)s"
