@@ -9,21 +9,24 @@
 set -x
 echo "SCRAM_ARCH=$SCRAM_ARCH"
 
-if [ "X$_JOB_AD" != "X" ];
+if [ "X$_CONDOR_JOB_AD" != "X" ];
 then
-    CRAB_Dest=`grep '^CRAB_Dest =' $_JOB_AD | tr -d '"' | awk '{print $NF;}'`
+    CRAB_Dest=`grep '^CRAB_Dest =' $_CONDOR_JOB_AD | tr -d '"' | awk '{print $NF;}'`
     if [ "X$CRAB_Dest" = "X" ];
     then
         print "Unable to determine CRAB output destination directory"
         exit 2
     fi
-    CRAB_localOutputFiles=`grep '^CRAB_localOutputFiles =' $_JOB_AD | tr -d '"' | awk '{print $NF;}'`
-    CRAB_Id=`grep '^CRAB_Id =' $_JOB_AD | tr -d '"' | awk '{print $NF;}'`
+    CRAB_localOutputFiles=`grep '^CRAB_localOutputFiles =' $_CONDOR_JOB_AD | tr -d '"' | awk '{print $NF;}'`
+    CRAB_Id=`grep '^CRAB_Id =' $_CONDOR_JOB_AD | tr -d '"' | awk '{print $NF;}'`
     if [ "X$CRAB_Id" = "X" ];
     then
         print "Unable to determine CRAB Id."
         exit 2
     fi
+   echo "Output files: $CRAB_localOutputFiles"
+   echo "CRAB ID: $CRAB_Id"
+   echo "Destination: $CRAB_Dest"
 fi
 
 sh ./CMSRunAnaly.sh "$@"
