@@ -8,12 +8,16 @@ ORIGDIR=$PWD
 STARTDIR=$PWD/tmp/runtime
 
 WMCOREDIR=$STARTDIR/WMCore
-WMCOREVER=0.9.59-dagman
+WMCOREVER=0.9.59-dagman2
 WMCOREREPO=bbockelm
 
 TASKWORKERDIR=$STARTDIR/TaskWorker
 TASKWORKERVER=0.1.1-dagman2
 TASKWORKERREPO=bbockelm
+
+CAFUTILITIESDIR=$STARTDIR/CAFUtilities
+CAFUTILITIESVER=0.1-dagman
+CAFUTILITIESREPO=bbockelm
 
 DBSDIR=$STARTDIR/DBS
 DBSVER=DBS_2_1_9-dagman2
@@ -28,7 +32,7 @@ CRABSERVERVER=3.1.0-dagman
 CRABSERVERREPO=bbockelm
 
 CRABCLIENTDIR=$STARTDIR/CRABClient
-CRABCLIENTVER=3.1.1-dagman2
+CRABCLIENTVER=3.1.1-dagman3
 CRABCLIENTREPO=bbockelm
 
 rm -rf $STARTDIR
@@ -44,6 +48,7 @@ cp $BASEDIR/gWMS-CMSRunAnaly.sh $STARTDIR || exit 3
 
 pushd $STARTDIR
 
+curl -L https://github.com/$CAFUTILITIESREPO/CAFUtilities/archive/$CAFUTILITIESVER.tar.gz | tar zx || exit 2
 curl -L https://github.com/$WMCOREREPO/WMCore/archive/$WMCOREVER.tar.gz | tar zx || exit 2
 curl -L https://github.com/$TASKWORKERREPO/CAFTaskWorker/archive/$TASKWORKERVER.tar.gz | tar zx || exit 2
 curl -L https://github.com/$DBSREPO/DBS/archive/$DBSVER.tar.gz | tar zx || exit 2
@@ -60,6 +65,10 @@ popd
 
 pushd CAFTaskWorker-$TASKWORKERVER/src/python
 zip -r $STARTDIR/CRAB3.zip TaskWorker || exit 3
+popd
+
+pushd CAFUtilities-$CAFUTILITIESVER/src/python
+zip -r $STARTDIR/CRAB3.zip TaskDB || exit 3
 popd
 
 pushd DBS-$DBSVER/Clients/Python
