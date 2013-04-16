@@ -45,7 +45,7 @@ class Create(DBCreator):
         tm_site_whitelist VARCHAR(255),
         tm_site_blacklist VARCHAR(255),
         tm_split_algo VARCHAR(255) NOT NULL,
-        tm_split_args VARCHAR(255) NOT NULL,
+        tm_split_args CLOB NOT NULL,
         tm_user_sandbox VARCHAR(255) NOT NULL,
         tm_cache_url VARCHAR(255) NOT NULL,
         tm_username VARCHAR(255) NOT NULL,
@@ -60,7 +60,6 @@ class Create(DBCreator):
         tm_outfiles VARCHAR(255),
         tm_tfile_outfiles VARCHAR(255),
         tm_edm_outfiles VARCHAR(255),
-        tm_data_runs VARCHAR(255),
         tm_transformation VARCHAR(255) NOT NULL,
         tm_arguments CLOB,
         PRIMARY KEY(tm_taskname)
