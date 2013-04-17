@@ -109,18 +109,18 @@ def determineSizes(transfer_list):
     return sizes
 
 def reportResults(job_id, dest_list, sizes):
-    filtered_dest = [dest_list[i] for i in range(dest_list) if sizes[i] >= 0]
+    filtered_dest = [dest_list[i] for i in range(len(dest_list)) if sizes[i] >= 0]
     filtered_sizes = [i for i in sizes if i >= 0]
     retval = 0
 
-    cmd = 'condor_qedit %s OutputSizes "%s"' % (job_id, ",".join(filtered_sizes))
+    cmd = 'condor_qedit %s OutputSizes "\\"%s\\""' % (job_id, ",".join(filtered_sizes))
     print "+", cmd
     status, output = commands.getstatusoutput(cmd)
     if status:
         retval = status
         print output
 
-    cmd = 'condor_qedit %s OutputPFNs "%s"' % (job_id, ",".join(filtered_dest))
+    cmd = 'condor_qedit %s OutputPFNs "\\"%s\\""' % (job_id, ",".join(filtered_dest))
     print "+", cmd
     status, output = commands.getstatusoutput(cmd)
     if status:
@@ -151,7 +151,7 @@ def async_stageout(dest_site, source_dir, dest_dir, count, job_id, *filenames, *
         status, output = commands.getstatusoutput(cmd)
         if status:
             print "Failed to query condor user log:\n%s" % output
-            return 0
+            return 1
         match_site, source_site = output.split('\n')[0].split(" ", 1)
         # TODO: Testing mode.  If CMS site is not known, assume Nebraska
         if match_site == 'Unknown' or source_site == 'Unknown':

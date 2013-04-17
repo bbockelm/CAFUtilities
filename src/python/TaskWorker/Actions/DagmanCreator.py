@@ -13,6 +13,7 @@ VARS Job%(count)d count="%(count)d" runAndLumiMask="%(runAndLumiMask)s" inputFil
 
 JOB ASO%(count)d ASO.submit
 VARS ASO%(count)d count="%(count)d" outputFiles="%(remoteOutputFiles)s"
+RETRY ASO%(count)d 3
 
 PARENT Job%(count)d CHILD ASO%(count)d
 """
