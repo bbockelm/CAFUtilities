@@ -18,8 +18,13 @@ import Site, Job, Node, pUtil
 
 
 
-# make sure shouldPFC4TURLsBeCreated is correct DOESNT WORK, test again with simplified copysetup
 # add CMSExperiment to dist
+# add CMSSiteInformation to dist
+# merge with CMS code
+# make sure job rec works fine after adding scope info to moveLostOutputFiles
+# LRZ-LMU_TEST
+# forced rucio in Mover PN
+# must move nordugrid setup to NordugridATLASExperiment, since it's using getAnalysisTrf()
 
 
 
@@ -147,8 +152,12 @@ import Site, Job, Node, pUtil
 # Corrected a problem in updateReport() which prevented the correct dsname to be used (Mover)
 #
 # 56d:
-# shouldPFC4TURLsBeCreated() updated for short form of copysetup, useFileStager not needed for TURL based PFC decision (Mover)
+# Added _tf to payload name recognition in getPayloadName() (pUtil)
+# Updated getLFCFileList() to allow non-local replicas in case of FAX (Mover)
+# Now filling dsdict dataset dictionary for single input files in get_data() (Mover)
+# Created dump() and displayArchitecture(), called from specialChecks() (ATLASExperiment)
 #
+# 57a:
 # Removed dataset name update from updateReport(), as well as arguments dsdict, lfn and number_of_files, and its call in mover_get_data() (Mover)
 # Introduced __error as new data member in SiteInformation class, used in processQueuedata(),  (SiteInformation)
 # Removed error argument from processQueuedata(), extractAppdir() (SiteInformation)
@@ -171,6 +180,63 @@ import Site, Job, Node, pUtil
 # Removed unnecessary usages of variable experiment in setPython(), findPythonInRelease(), getSpecialSetupCommand() and their calls (ATLASExperiment)
 # Removed outdated ATLAS release checks from getAnalyCmd3() (Experiment)
 # Renamed getAnalyCmd3() to getAnalysisRunCommand(), renamed cmd3 to run_command within method (Experiment)
+# Added Rucio scopes to Job class, and setJobDef() (Job)
+# Created getPathFromScope(), getFullPath() (SiteMover)
+# Created createZippedDictionary(), used by get_data() (Mover)
+# Creating scopedict in get_data(), sending it to mover_get_data() (Mover)
+# Added scopedict argument to mover_get_data() (Mover)
+# Sending scopedict and sitemover object to getFileInfo() (Mover)
+# Added scopedict and sitemover arguments to getFileInfo() (Mover)
+# Now using scope for tier 3 sites in getFileInfo() (Mover)
+# Sending scopedict to getPoolFileCatalog() from getFileInfo() (Mover)
+# Added argument scopedict to getPoolFileCatalog() (Mover)
+# Renamed createFileDicsForLFC() to createFileDictionaries() (Mover)
+# Updated willDoFileLookups() and created doFileLookups, and added __doFileLookups (Experiment)
+# Updated willDoFileLookups() for __doLookups boolean (ATLASExperiment)
+# Renamed all accessdict to access_dict, scopedict to scope_dict, filename_dic to lfn_dict (Mover)
+# Sending sitemover to getPoolFileCatalog() from getFileInfo(), added sitemover argument to getPoolFileCatalog() (Mover)
+# Renamed thisfile to lfn in parts of getFileInfo() (Mover)
+# Removed unused xml_from_PFC from getLFCFileList() (Mover)
+# Created getFileLookups() (Experiment)
+# Using getFileLookups() in willDoFileLookups() (ATLASExperiment)
+# Using doFileLookups() in specialChecks() (ATLASExperiment)
+# Added arguments scopeOut and scopeLog to mover_put_data() (Mover)
+# Sending scopeOut list to mover_put_data() from stageOut() (runJob)
+# Sending scopeLog (list) to mover_put_data() from transferLogFile() (JobLog)
+# Sending scopeLog (list) and scopeOut to mover_put_data() from moveLostOutputFiles() (pilot)
+# Renamed tokenList to token_list in mover_put_data(), and getSpaceTokenList() (Mover)
+# Renamed fileList to file_list in mover_put_data() (Mover)
+# Created getScope() used by mover_put_data() (Mover)
+# Sending scope to sitemover_put_data(), two places, from mover_put_data() (Mover)
+# Added scope argument to sitemover_put_data() (Mover)
+# Added experiment to Job class (Job)
+# Setting job.experiment in getNewJob(), __main__() (pilot, runJob)
+# Removed experiment argument from interpretPayload() and from its call in __main__() (ErrorDiagnosis, runJob)
+# Removed experiment argument from interpretPayloadStdout() and extractJobInformation(), and from their calls in interpretPayload() (ErrorDiagnosis)
+# Removed experiment argument from get_data() and from its call in stageIn() (Mover, runJob)
+# Moved getPayloadName() from pUtil to *Experiment, created prototype method in Experiment (pUtil, *Experiment)
+# Now using getPayloadName() from *Experiment instead of from pUtil, in runMain(), __main__() (pilot, runJob)
+# Removed thisExperiment verification from __main__() (runJob)
+# Created getMetadataForRegistration() (*Experiment)
+# Updated PFCxml() to use getMetadataForRegistration() (pUtil)
+# Added experiment as option to PFCxml() (pUtil)
+# Sending experiment to PFCxml() from transferLogFile(), transferAdditionalFile() (JobLog)
+# Sending experiment to PFCxml() from getXML() (PandaServerClient)
+# Sending experiment to PFCxml() from moveLostOutputFiles(), OK to send "unknown" (pilot)
+# Protected against unset job.experiment in moveLostOutputFiles() (pilot)
+# Sending experiment to PFCxml() from createFileMetadata(), stageOut() (runJob)
+# Created getAttrForRegistration() (Experiment, CMSExperiment; implementation not needed in ATLASExperiment)
+# updateXMLWithSURLs() is now using getAttrForRegistration() (pUtil)
+# Added experiment argument to updateXMLWithSURLs() (pUtil)
+# Now calling updateXMLWithSURLs() with experiment argument, from updateOutputFilesXMLWithSURLs4NG(), updatePandaServer() (PandaServerClient)
+# Added experiment argument to updateOutputFilesXMLWithSURLs4NG() (PandaServerClient)
+# Calling updateOutputFilesXMLWithSURLs4NG() with experiment argument (PandaServerClient)
+# Created getExpSpecificMetadata() (Experiment, CMSExperiment)
+# Using getExpSpecificMetadata() in postJobTask() (JobLog)
+# Sending expSpecificMetadata to updatePandaServer() (JobLog)
+# Added additionalMetadata argument to updatePandaServer() (JobLog, PandaServerClient)
+# Sending additionalMetadata to PandaServerClient::updatePandaServer() in updatePandaServer() (JobLog)
+# Added additionalMetadata to metaData dictionary in updatePandaServer() (PandaServerClient)
 
 # Todo:
 # use checkForDirectAccess in get_data() in more site movers
@@ -182,6 +248,7 @@ import Site, Job, Node, pUtil
 # remove:
 # stat test in createSiteWorkDir, cleanup (pilot) for QMUL
 # test code for importing errordiagnosis
+# shouldPFC4TURLsBeCreated() updated for short form of copysetup, useFileStager not needed for TURL based PFC decision (Mover)?
 
 version = getPilotVersion()
 pilot_version_tag = 'PR' # 'RC'
@@ -200,9 +267,7 @@ abortDQSpace = 10                   # unit is in GB
 warnDQSpace = 100                   # unit is in GB
 localsizelimit_stdout = 2*1024**2   # size limit of payload stdout size during running. unit is in kB
 localspacelimit = 2*1024**2         # space limit of remaining local disk size during running. unit is in kB
-#Mancinelli 
-localspacelimit_user = 7*1024**3    # maximum size of user work area. unit is in kB
-#localspacelimit_user = 7*1024**2    # maximum size of user work area. unit is in kB
+localspacelimit_user = 7*1024**2    # maximum size of user work area. unit is in kB
 localspacelimit0 = 5*1024**2        # initial space limit before asking for a job. unit is in kB
 outputlimit = 500*1024**3           # maximum allowed size of an output file. unit is B
 pilotId = 'xtestP001'               # pilot id
@@ -552,9 +617,16 @@ def moveLostOutputFiles(job, thisSite, remaining_files):
     tolog("Guids for remaining files:")
     dumpOrderedItems(job.outFilesGuids)
 
+    # for backwards compatibility (recovered job object created by pilot version < 57a will not have the experiment data member)
+    try:
+        experiment = job.experiment
+    except:
+        experiment = "unknown"
+
     # recreate the OutPutFileCatalog.xml
     file_name = "OutPutFileCatalog.xml"
     file_path = os.path.join(thisSite.workdir, file_name)
+
     try:
         guids_status = pUtil.PFCxml(experiment, file_path, remaining_files, fguids=job.outFilesGuids, fntag="pfn", analJob=analJob, jr=True)
     except Exception, e:
@@ -588,7 +660,7 @@ def moveLostOutputFiles(job, thisSite, remaining_files):
         # Note: alt stage-out numbers are not saved in recovery mode (job object not returned from this function)
         rc, pilotErrorDiag, rf, rs, job.filesNormalStageOut, job.filesAltStageOut = mover.mover_put_data("xmlcatalog_file:%s" % (file_path), dsname,\
                                                               thisSite.sitename, ub=thisSite.dq2url, analysisJob=analJob,\
-                                                              proxycheck=proxycheckFlag, spsetup=job.spsetup,\
+                                                              proxycheck=proxycheckFlag, spsetup=job.spsetup, scopeOut=job.scopeOut, scopeLog=job.scopeLog,\
                                                               token=job.destinationDBlockToken, pinitdir=pilot_initdir,\
                                                               datasetDict=datasetDict, prodSourceLabel=job.prodSourceLabel,\
                                                               jobId=job.jobId, jobWorkDir=job.workdir, DN=job.prodUserID,\
@@ -2082,7 +2154,6 @@ def getDispatcherDictionary(thisSite, workerNode, _diskSpace, _uflag, tofile):
 
 def getNewJob(thisSite, workerNode, _uflag, si, tofile=True):
     """ Get a new job definition from the jobdispatcher or from file """
-    tolog("Mancinellidebug: pilotcode-dev")
     global jobRequestFlag
 
     pilotErrorDiag = ""
@@ -2244,6 +2315,7 @@ def getNewJob(thisSite, workerNode, _uflag, si, tofile=True):
     newJob = Job.Job()
     newJob.setJobDef(data)  # fill up the fields with correct values now
     newJob.datadir = thisSite.workdir + "/PandaJob_%d_data" % (newJob.jobId)
+    newJob.experiment = experiment
 
     if data.has_key('logGUID'):
         logGUID = data['logGUID']
@@ -2269,15 +2341,6 @@ def getNewJob(thisSite, workerNode, _uflag, si, tofile=True):
         if data['debug'].lower() == "true":
             update_freq_server = 5*30
             tolog("Debug mode requested: Updating server update frequency to %d s" % (update_freq_server))
-
-    thisExperiment = getExperiment(experiment)
-    if thisExperiment:
-        tolog("Pilot will serve experiment: %s" % (thisExperiment.getExperiment()))
-        newJob.setExperiment(thisExperiment.getExperiment())
-    else:
-        tolog("!!FAILED!!1234!! Did not get an experiment object from the factory")
-        return error.ERR_GENERALERROR
-
 
     return newJob, ""
 
@@ -3809,7 +3872,10 @@ def handleQueuedata(_queuename, _pshttpurl, error, thisSite, _jobrec, _experimen
 
     # get the site information object
     si = getSiteInformation(_experiment)
-
+   
+    #get the experiment object
+    thisExperiment = getExperiment(_experiment) 
+    
     # (re-)download the queuedata
     ec, hasQueuedata = si.processQueuedata(_queuename, forceDownload=forceDownload)
     if ec != 0:
@@ -3851,17 +3917,9 @@ def handleQueuedata(_queuename, _pshttpurl, error, thisSite, _jobrec, _experimen
         stageinretry = getStagingRetry("stage-in")
         stageoutretry = getStagingRetry("stage-out")
 
-
-    # Mancinelli: moved verifySwbase() to experiment class 
+    # Mancinelli: moved verifySwbase to Experiment class
     # does the application directory exist?
-    thisExperiment = getExperiment(_experiment)
-    if thisExperiment:
-        tolog("Pilot will serve experiment: %s" % (thisExperiment.getExperiment()))
-    else:
-        tolog("!!FAILED!!1234!! Did not get an experiment object from the factory")
-        return error.ERR_GENERALERROR
-    #ec = verifySwbase(readpar('appdir'))
-    ec = thisExperiment.verifySwbase()
+    ec = thisExperiment.verifySwbase(readpar('appdir'))
     if ec != 0:
         return ec, thisSite, _jobrec, hasQueuedata
 
@@ -4056,6 +4114,7 @@ def runMain(runpars):
         # check special environment variables
         # ec = checkSpecialEnvVars(thisSite.sitename)
         ec = thisExperiment.checkSpecialEnvVars()
+
         if ec != 0:
             return ec
 
@@ -4342,9 +4401,7 @@ def runMain(runpars):
             loopingLimit = getLoopingLimit(job.maxCpuCount, job.jobPars, thisSite.sitename)
 
             # figure out and set payload file names
-            #Mancinelli
-            #job.setPayloadName(pUtil.getPayloadName(job))
-            job.setPayloadName(pUtil.getPayloadName(job, experiment))
+            job.setPayloadName(thisExperiment.getPayloadName(job))
 
             # update the global used in the exception handler
             globalJob = job
@@ -4659,6 +4716,20 @@ def runMain(runpars):
             pilotErrorDiag = "Exception caught in pilot: %s" % (str(errorMsg))
         tolog("!!FAILED!!1999!! %s" % (pilotErrorDiag))
 
+        cmd = "ls -lF %s" % (pilot_initdir)
+        tolog("Executing command: %s" % (cmd))
+        out = commands.getoutput(cmd)
+        tolog(out)
+
+        if globalSite:
+            if os.path.exists(globalSite.workdir):
+                cmd = "ls -lF %s" % (globalSite.workdir)
+                tolog("Executing command: %s" % (cmd))
+                out = commands.getoutput(cmd)
+                tolog(out)
+            else:
+                tolog("Directory %s does not exist" % (globalSite.workdir))
+
         if isJobDownloaded:
             if isServerUpdated:
                 tolog("Do a full cleanup since job was downloaded and server updated")
@@ -4676,6 +4747,14 @@ def runMain(runpars):
                 if bPID:
                     tolog("Cleanup using jobDic")
                     for k in jobDic.keys():
+                        if os.path.exists(jobDic[k][1].workdir):
+                            cmd = "ls -lF %s" % (jobDic[k][1].workdir)
+                            tolog("Executing command: %s" % (cmd))
+                            out = commands.getoutput(cmd)
+                            tolog(out)
+                        else:
+                            tolog("Directory %s does not exist" % (jobDic[k][1].workdir))
+
                         jobDic[k][1].result[0] = "failed"
                         jobDic[k][1].currentState = jobDic[k][1].result[0]
                         if jobDic[k][1].result[2] == 0:

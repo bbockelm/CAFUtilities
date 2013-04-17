@@ -278,6 +278,12 @@ class PandaServerClient:
         node_xml = ""
         tolog("getXML called")
 
+        # for backwards compatibility
+        try:
+            experiment = job.experiment
+        except:
+            experiment = "unknown"
+
         # do not send xml for state 'holding' (will be sent by a later pilot during job recovery)
         if job.result[0] == 'holding' and sitename != "CERNVM":
             pass
@@ -304,7 +310,7 @@ class PandaServerClient:
                     fname = os.path.join(workdir, job.logFile)
                 if os.path.exists(fname):
                     fnamelog = "%s/logfile.xml" % (xmldir)
-                    guids_status = PFCxml("CMS", fnamelog, fntag="lfn", alog=job.logFile, alogguid=job.tarFileGuid, jr=jr)
+                    guids_status = PFCxml(experiment, fnamelog, fntag="lfn", alog=job.logFile, alogguid=job.tarFileGuid, jr=jr)
                     from SiteMover import SiteMover
                     ec, pilotErrorDiag, _fsize, _checksum = SiteMover.getLocalFileInfo(fname, csumtype=sitemover.getChecksumCommand())
                     if ec != 0:
@@ -396,7 +402,7 @@ class PandaServerClient:
 
         return node_xml
 
-    def updateOutputFilesXMLWithSURLs4NG(self, siteWorkdir, jobId, outputFilesXML):
+    def updateOutputFilesXMLWithSURLs4NG(self, experiment, siteWorkdir, jobId, outputFilesXML):
         """ Update the OutputFiles.xml file with SURLs """
 
         status = False
@@ -414,7 +420,7 @@ class PandaServerClient:
                 f.close()
 
                 # update the XML
-                xmlOUT = updateXMLWithSURLs(xmlIN, siteWorkdir, jobId, self.__jobrec, format='NG')
+                xmlOUT = updateXMLWithSURLs(experiment, xmlIN, siteWorkdir, jobId, self.__jobrec, format='NG')
 
                 # write the XML
                 try:
@@ -556,18 +562,23 @@ class PandaServerClient:
             node['pilotErrorCode'] = job.result[2]
             node['state'] = job.result[0]
 
+        # for backward compatibility
+        try:
+            experiment = job.experiment
+        except:
+            experiment = "unknown"
+
         # do not make the update if Nordugrid (leave for ARC to do)
         if readpar('region') == 'Nordugrid':
             if final:
                 # update xml with SURLs stored in special SURL dictionary file
-                if self.updateOutputFilesXMLWithSURLs4NG(site.workdir, job.jobId, job.outputFilesXML):
+                if self.updateOutputFilesXMLWithSURLs4NG(experiment, site.workdir, job.jobId, job.outputFilesXML):
                     tolog("Successfully added SURLs to %s" % (job.outputFilesXML))
 
                 # update xml with SURLs stored in special SURL dictionary file
                 if node.has_key('xml'):
                     tolog("Updating node structure XML with SURLs")
-                    #Mancinelli: added experiment argument to call TODO: figure how to not make it hardcoded
-                    node['xml'] = updateXMLWithSURLs("CMS", node['xml'], site.workdir, job.jobId, self.__jobrec) # do not use format 'NG' here
+                    node['xml'] = updateXMLWithSURLs(experiment, node['xml'], site.workdir, job.jobId, self.__jobrec) # do not use format 'NG' here
                 else:
                     tolog("WARNING: Found no xml entry in the node structure")
 
@@ -581,8 +592,7 @@ class PandaServerClient:
         if final and node.has_key('xml'):
             # update xml with SURLs stored in special SURL dictionary file
             tolog("Updating node structure XML with SURLs")
-            #Mancinelli: added experiment argument to call
-            node['xml'] = updateXMLWithSURLs("CMS", node['xml'], site.workdir, job.jobId, self.__jobrec)
+            node['xml'] = updateXMLWithSURLs(experiment, node['xml'], site.workdir, job.jobId, self.__jobrec)
 
             _xml = node['xml']
             if not isLogfileCopied(site.workdir):
@@ -597,10 +607,9 @@ class PandaServerClient:
                     _xml = node['xml']
                     node['xml'] = ""
 
-        # Mancinelli: add experiment specific metadata - FWJR metadata for CMS
-        tolog("Mancinellidebug final = %s expSpecificMetadata exist = %s job.result[0] = %s" % (final, additionalMetadata != None, job.result[0]))
+        # add experiment specific metadata
         if final and additionalMetadata != None:
-            tolog("Mancinellidebug adding FWJR to node")
+            tolog("Adding additionalMetadata to node")
             if 'metaData' in node:
                 node['metaData'] += additionalMetadata
             else:

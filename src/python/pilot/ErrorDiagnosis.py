@@ -29,22 +29,22 @@ class ErrorDiagnosis(Diagnosis):
 
         return cls.__instance
 
-    def interpretPayload(self, job, res, getstatusoutput_was_interrupted, current_job_number, runCommandList, failureCode, experiment):
+    def interpretPayload(self, job, res, getstatusoutput_was_interrupted, current_job_number, runCommandList, failureCode):
         """ Interpret the payload, look for specific errors in the stdout """
 
         # Extract job information (e.g. number of events)
-        job = self.extractJobInformation(job, runCommandList, experiment) # add more arguments as needed
+        job = self.extractJobInformation(job, runCommandList) # add more arguments as needed
 
         # interpret the stdout
-        job = self.interpretPayloadStdout(job, res, getstatusoutput_was_interrupted, current_job_number, runCommandList, failureCode, experiment)
+        job = self.interpretPayloadStdout(job, res, getstatusoutput_was_interrupted, current_job_number, runCommandList, failureCode)
 
         return job
 
-    def extractJobInformation(self, job, runCommandList, experiment):
+    def extractJobInformation(self, job, runCommandList):
         """ Extract relevant job information, e.g. number of events """
 
         # get the experiment object
-        thisExperiment = getExperiment(experiment)
+        thisExperiment = getExperiment(job.experiment)
         if not thisExperiment:
             job.pilotErrorDiag = "ErrorDiagnosis did not get an experiment object from the factory"
             job.result[2] = error.ERR_GENERALERROR # change to better/new error code
@@ -64,20 +64,22 @@ class ErrorDiagnosis(Diagnosis):
 
         return job
 
-    def interpretPayloadStdout(self, job, res, getstatusoutput_was_interrupted, current_job_number, runCommandList, failureCode, experiment):
+    def interpretPayloadStdout(self, job, res, getstatusoutput_was_interrupted, current_job_number, runCommandList, failureCode):
         """ payload error handling """
 
         # NOTE: Move away ATLAS specific info in this method, e.g. vmPeak stuff
 
         error = PilotErrors()
-        transExitCode = res[0]%255
+        #Mancinelli: moved it in experiment class method handleTrfExitcode
+        #transExitCode = res[0]%255
+        tolog("Mancinellidebug: res = %s res[0] = %s" % (res, res[0]))
 
         # Get the proper stdout filename
         number_of_jobs = len(runCommandList)
         filename = getStdoutFilename(job.workdir, job.stdout, current_job_number, number_of_jobs)
 
         # get the experiment object
-        thisExperiment = getExperiment(experiment)
+        thisExperiment = getExperiment(job.experiment)
         if not thisExperiment:
             job.pilotErrorDiag = "ErrorDiagnosis did not get an experiment object from the factory"
             job.result[2] = error.ERR_GENERALERROR # change to better/new error code
@@ -118,11 +120,37 @@ class ErrorDiagnosis(Diagnosis):
                 failed = True
                 installation_error = True
 
+        if res[0] or failed:
+            #Mancinelli: all this common part with CMS?
+            if failureCode:
+                job.pilotErrorDiag = "Payload failed: Interrupt failure code: %d" % (failureCode)
+                # (do not set pilot error code)
+            elif getstatusoutput_was_interrupted:
+                raise Exception, "Job execution was interrupted (see stderr)"
+            elif out_of_memory:
+                job.pilotErrorDiag = "Payload ran out of memory"
+                job.result[2] = error.ERR_ATHENAOUTOFMEMORY
+            elif no_payload_output:
+                job.pilotErrorDiag = "Payload failed: No output"
+                job.result[2] = error.ERR_NOPAYLOADOUTPUT
+            elif installation_error:
+                job.pilotErrorDiag = "Payload failed: Missing installation"
+                job.result[2] = error.ERR_MISSINGINSTALLATION
+            elif res[0]:
+                #Mancinelli: calling for experiment class method to manage transformation exit code
+                job = thisExperiment.handleTrfExitcode(job, res, error, filename)
+            else:
+                job.pilotErrorDiag = "Payload failed due to unknown reason (check payload stdout)"
+                job.result[2] = error.ERR_UNKNOWN
+            tolog("!!FAILED!!3000!! %s" % (job.pilotErrorDiag))
+
+
         # note: several errors below are atlas specific (not all), should be handled through ATLASExperiment via thisExperiment object
         # move entire section below to ATLASExperiment, define prototype [empty] methods in Experiment and OtherExperiment classes, implement in ATLASExperiment
         # non experiment specific errors should be handled here (e.g. no_payload_output)
 
         # handle non-zero failed job return code but do not set pilot error codes to all payload errors
+        """
         if transExitCode or failed:
             if failureCode:
                 job.pilotErrorDiag = "Payload failed: Interrupt failure code: %d" % (failureCode)
@@ -156,7 +184,6 @@ class ErrorDiagnosis(Diagnosis):
                             job.pilotErrorDiag = "NFS/SQLite locking problems: %s" % (_out)
                             job.result[2] = error.ERR_NFSSQLITE
                         else:
-                            tolog("Mancinellidebug Error - failurecode = %s, transExitCode = %s, res = %s, res[0] = %s, res[0]255 = %s" % (failureCode, transExitCode, res, res[0], res[0]%255)) 
                             job.pilotErrorDiag = "Job failed: Non-zero failed job return code: %d" % (transExitCode)
                             # (do not set a pilot error code)
                     else:
@@ -173,6 +200,7 @@ class ErrorDiagnosis(Diagnosis):
             job.exeErrorDiag = res[2]
 
         job.result[1] = transExitCode
+        """
         return job
 
     

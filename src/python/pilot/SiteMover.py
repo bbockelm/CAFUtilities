@@ -3110,3 +3110,53 @@ class SiteMover(object):
             tolog("not directIn")
 
         return directIn
+
+    def getPathFromScope(self, scope, lfn):
+        """ Construct a partial PFN using the scope and the LFN """
+
+        # /<site_prefix>/<space_token>/rucio/<scope>/md5(<scope>:<lfn>)[0:2]/md5(<scope:lfn>)[2:4]/<lfn>
+
+        import hashlib
+        correctedscope = "/".join(scope.split('.'))
+        hash = hashlib.md5('%s:%s' % (scope, lfn)).hexdigest()[:6]
+        return  'rucio/%s/%s/%s/%s' % (correctedscope, hash[0:2], hash[2:4], lfn)
+
+    def getFullPath(self, scope, spacetoken, lfn, analyJob, prodSourceLabel):
+        """ Construct a full PFN using site prefix, space token, scope and LFN """
+
+        # <protocol>://<hostname>:<port>/<protocol_prefix>/ + <site_prefix>/<space_token>/rucio/<scope>/md5(<scope>:<lfn>)[0:2]/md5(<scope:lfn>)[2:4]/<lfn>
+
+        full_path = ""
+
+        # Get the SE info
+        se = readpar('se').split(",")[0]
+        _spacetoken, se = SiteMover.extractSE(se)
+        tolog("Extracted spacetoken=%s, se=%s" % (_spacetoken, se))
+
+        # remove any unwanted stage-in info (present at CERN for atlasdatatape)
+        se = SiteMover.filterSE(se)
+        tolog("Full path will use SE: %s" % (se))
+
+        # Use default space token from se field unless specified
+        if spacetoken == "" or spacetoken == "NULL":
+            # get the default space token from se
+            spacetoken = _spacetoken
+            tolog("Full path will use default space token descriptor: %s" % (spacetoken))
+        else:
+            tolog("Full path will use space token descriptor: %s" % (spacetoken))
+
+        # Get the SE path from se[prod]path
+        # E.g. /dpm/grid.sinica.edu.tw/home/atlas/atlasscratchdisk/
+        destination = self.getPreDestination(analyJob, spacetoken, prodSourceLabel)
+        tolog("Full path will use destination: %s" % (destination))
+
+        # Get the path from the scope and LFN
+        scope_path = self.getPathFromScope(scope, lfn)
+        tolog("Full path will use path from scope: %s" % (scope_path))
+
+        # Construct final full path
+        full_path = se + destination
+        full_path = os.path.join(full_path, scope_path)
+
+        return full_path
+

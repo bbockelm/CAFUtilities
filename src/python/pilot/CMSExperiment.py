@@ -15,12 +15,15 @@ from pUtil import getCmtconfig             # Get the cmtconfig from the job def 
 from pUtil import verifyReleaseString      # To verify the release string (move to Experiment later)
 from pUtil import setPilotPythonVersion    # Which python version is used by the pilot
 from pUtil import getSiteInformation       # Get the SiteInformation object corresponding to the given experiment
+from pUtil import isBuildJob               # Is the current job a build job?
+from pUtil import remove
 
 # Standard python modules
 import os
 import commands
 import shlex
 import getopt
+from glob import glob
 
 class CMSExperiment(Experiment):
 
@@ -77,6 +80,38 @@ class CMSExperiment(Experiment):
         tolog("Using %s" % (pybin))
         return ec, pilotErrorDiag, pybin
 
+    def getCMSAnalysisRunCommand(self, job, jobSite, trfName):
+
+        from RunJobUtilities import updateCopysetups
+
+        ec = 0
+        pilotErrorDiag = ""
+        run_command = ""
+
+        # get relevant file transfer info
+        dInfo, useCopyTool, useDirectAccess, useFileStager, oldPrefix, newPrefix, copysetup, usePFCTurl, lfcHost =\
+               self.getFileTransferInfo(job.transferType, isBuildJob(job.outFiles))
+
+        # extract the setup file from copysetup (and verify that it exists)
+        _copysetup = self.getSetupFromCopysetup(copysetup)
+        tolog("Mancinellidebug: copysetup = %s" % _copysetup)
+        if _copysetup != "" and os.path.exists(_copysetup):
+            run_command = 'source %s;' % (_copysetup)
+
+        # add the user proxy
+        if os.environ.has_key('X509_USER_PROXY'):
+            run_command += 'export X509_USER_PROXY=%s;' % os.environ['X509_USER_PROXY']
+        else:
+            tolog("Could not add user proxy to the run command (proxy does not exist)")
+
+        # set up analysis trf
+        run_command += './%s %s' % (trfName, job.jobPars)
+
+
+        return ec, pilotErrorDiag, run_command
+
+
+
     def getJobExecutionCommand(self, job, jobSite, pilot_initdir):
         """ Define and test the command(s) that will be used to execute the payload """
 
@@ -115,7 +150,6 @@ class CMSExperiment(Experiment):
 
         # Get the cmtconfig value
         cmtconfig = getCmtconfig(job.cmtconfig)
-        tolog("Mancinellidebug cmtconfig = %s --- job.cmtconfig = %s" % (cmtconfig, job.cmtconfig))
 
         # Set python executable (after SITEROOT has been set)
         if siteroot == "":
@@ -138,18 +172,18 @@ class CMSExperiment(Experiment):
             if job.prodSourceLabel == 'ddm' or job.prodSourceLabel == 'software':
                 cmd = '%s %s %s' % (pybin, trfName, job.jobPars)
             else:
-                tolog("Mancinellidebug: in 1")
                 scramArchSetup = self.getScramArchSetupCommand(job)
-                ec, pilotErrorDiag, cmdtrf = self.getAnalysisRunCommand(job, jobSite, trfName)
+                if "runGen" in job.trf: 
+                    ec, pilotErrorDiag, cmdtrf = self.getAnalysisRunCommand(job, jobSite, trfName)
+                else:
+                    ec, pilotErrorDiag, cmdtrf = self.getCMSAnalysisRunCommand(job, jobSite, trfName)
                 cmd = "%s %s" % (scramArchSetup, cmdtrf)
                 if ec != 0:
                     return ec, pilotErrorDiag, "", special_setup_cmd, JEM, cmtconfig
 
         elif verifyReleaseString(job.homePackage) != 'NULL' and job.homePackage != ' ':
-            tolog("Mancinellidebug: in 2")
             cmd = "%s %s/%s %s" % (pybin, job.homePackage, job.trf, job.jobPars)
         else:
-            tolog("Mancinellidebug: in 3")
             cmd = "%s %s %s" % (pybin, job.trf, job.jobPars)
 
         # Set special_setup_cmd if necessary
@@ -190,27 +224,26 @@ class CMSExperiment(Experiment):
         """ Looks for the scramArch option in the job.jobPars attribute and build 
             the command to export the SCRAMARCH env variable with the correct value """
 
+        strpars = ""
         if "CMSRunAnaly" in job.trf:
-            """ for the moment the export of scramarch is only needed for CMSRunAnaly trf """
             strpars = job.jobPars
-
             try:
-                #tolog("Mancinellidebug prima di shlex.split")
                 cmdopt = shlex.split(strpars)
-                #tolog("Mancinellidebug cmdopt = %s " % cmdopt) 
                 opts, args = getopt.getopt(cmdopt, "a:o:",
                                ["sourceURL=","jobNumber=","inputFile=","lumiMask=","cmsswVersion=","scramArch="])
-                #tolog("Mancinellidebug opts = %s args = %s" % (opts, args))
                 for o, a in opts:
                     if o == "--scramArch":
                         scramArch = a
                         cmdScramArchSetup = "export SCRAM_ARCH=%s;" % scramArch
-                        tolog("Mancinellidebug scramArch = %s" % scramArch) 
+                        tolog("Found option scramArch = %s" % scramArch)
+                        tolog("Adding %s to job_setup.sh" % cmdScramArchSetup) 
                         return cmdScramArchSetup
             except Exception, e:
                 tolog("Failed to parse option command in job.jobPars = %s -- cause: %s" % (strpars, e))
                 return ""
-        return ""
+        else:
+            """Not needed for runGen """
+            return "" 
 
     def getSpecialSetupCommand(self):
         """ Set special_setup_cmd if necessary """
@@ -234,7 +267,6 @@ class CMSExperiment(Experiment):
                     special_setup_cmd += ";"
 
         return special_setup_cmd
-
 
     def willDoFileLookups(self):
         """ Should (LFC) file lookups be done by the pilot or not? """
@@ -277,7 +309,7 @@ class CMSExperiment(Experiment):
         payloadname = "cmssw"
         return payloadname
 
-    def verifySwbase(self):
+    def verifySwbase(self, appdir):
         """ Called by pilot.py, check needed for handleQueuedata method """
         tolog("CMSExperiment - verifySwbase - nothing to do")
 
@@ -314,24 +346,105 @@ class CMSExperiment(Experiment):
 
 
     def getExpSpecificMetadata(self, job, workdir):
-        """ Return metadata extracted from FrameworkJobReport.xml"""
+        """ Return metadata extracted from jobReport.json"""
 
-        tolog("Mancinellidebug in getExpSpecificMetadata")
         fwjrMetadata = ''
-        fwjrFile = os.path.join(workdir,"FrameworkJobReport.xml")
+        fwjrFile = os.path.join(workdir, "jobReport.json")
+        tolog("Looking for jobReport file")
         if os.path.exists(fwjrFile):
-            tolog("Mancinellidebug found FWJR: %s" % fwjrFile)
-            fwjrMetadata = '<!--  CMS FrameWorkJobReport meta-data  -->\n'
+            tolog("Found jobReport: %s" % fwjrFile)
             try:
                 f = open(fwjrFile, 'r')
                 for line in f.readlines():
                     fwjrMetadata += line
             except Exception, e:
-                tolog("Failed to open FrameWorkJobReport file: %s" % str(e))
+                tolog("Failed to open jobReport file: %s" % str(e))
         else:
-            tolog("Mancinellidebug FrameworkJobReport.xml not found in %s " % fwjrFile)
+            tolog("jobReport not found in %s " % fwjrFile)
 
         return fwjrMetadata
+
+    def handleTrfExitcode(self, job, res, error, filename):
+        transExitCode = res[0]
+        #Mancinelli: TODO map CMS transformation error codes with error messages
+        if transExitCode:
+            # Handle PandaMover errors
+            # Mancinelli: do we need this?
+            if transExitCode == 176:
+                job.pilotErrorDiag = "PandaMover staging error: File is not cached"
+                job.result[2] = error.ERR_PANDAMOVERFILENOTCACHED
+            elif transExitCode == 86:
+                job.pilotErrorDiag = "PandaMover transfer failure"
+                job.result[2] = error.ERR_PANDAMOVERTRANSFER
+            else:
+                # check for specific errors in stdout
+                # Mancinelli: do we have to check stdout?
+                if os.path.exists(filename):
+                    """
+                    e1 = "prepare 5 database is locked"
+                    e2 = "Error SQLiteStatement"
+                    _out = commands.getoutput('grep "%s" %s | grep "%s"' % (e1, filename, e2))
+                    if 'sqlite' in _out:
+                        job.pilotErrorDiag = "NFS/SQLite locking problems: %s" % (_out)
+                        job.result[2] = error.ERR_NFSSQLITE
+                    else:
+                        job.pilotErrorDiag = "Job failed: Non-zero failed job return code: %d" % (transExitCode)
+                        # (do not set a pilot error code)
+                    """
+                    job.pilotErrorDiag = "Job failed: Non-zero failed job return code: %d" % (transExitCode)
+                    # (do not set a pilot error code)
+                else:
+                    job.pilotErrorDiag = "Job failed: Non-zero failed job return code: %d (%s does not exist)" % (transExitCode, filename)
+                    # (do not set a pilot error code)
+        # set the trf diag error
+        if res[2] != "":
+            tolog("TRF diagnostics: %s" % (res[2]))
+            job.exeErrorDiag = res[2]
+
+        job.result[1] = transExitCode
+        return job
+
+
+    def rmRedundants(self, workdir):
+        """ Remove redundant files and directories """
+
+        dir_list = [#"AtlasProduction*",
+                    "*.py",
+                    "*.pyc",
+                    # Mancinelli
+                    "pandaJobData.out",
+                    "Pilot_VmPeak.txt",
+                    "pandatracerlog.txt",
+                    "pandawnutil",
+                    "pilotlog.out",
+                    "pilot.stderr",
+                    "CMSRunAnaly.sh",
+                    "*.tgz",
+                    "PSetTweaks",
+                    "WMCore.zip",
+                    "lib",
+                    "CMSSW_*",
+                    "WMTaskSpace",
+                    "process.id",
+                    "cmsRun-main.sh",
+                    "PSet.pkl",
+                    "jobState-*-test.pickle",
+                    "ALLFILESTRANSFERRED",
+                    "OutPutFileCatalog.xml",
+                    "jobReportExtract.pickle",
+                    "metadata-*.xml",
+                    "PoolFileCatalog.xml"]
+
+        for _dir in dir_list:
+            files = glob(os.path.join(workdir, _dir))
+            tolog("Mancinellidebug: removing files = %s" % files)
+            rc = remove(files)
+            if not rc:
+                tolog("IGNORE: Failed to remove redundant file(s): %s" % (files))
+
+        tolog("Mancinellidebug: content of workdir = %s" % os.listdir(workdir))
+
+
 
 
 if __name__ == "__main__":

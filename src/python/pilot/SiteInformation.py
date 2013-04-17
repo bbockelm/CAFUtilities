@@ -354,6 +354,16 @@ class SiteInformation(object):
             ec = self.replaceQueuedataField("allowfax", "True")
             ec = self.replaceQueuedataField("faxredirector", "root://glrd.usatlas.org/")
 
+        if thisSite.sitename == "LRZ-LMU_TEST":
+            ec = self.replaceQueuedataField("seprodpath", "/pnfs/lrz-muenchen.de/data/atlas/dq2/atlasdatadisk/")
+            ec = self.replaceQueuedataField("setokens", "ATLASDATADISK")
+            ec = self.replaceQueuedataField("se", "token:ATLASDATADISK:srm://lcg-lrz-se.lrz-muenchen.de:8443/srm/managerv2?SFN=")
+            ec = self.replaceQueuedataField("seopt", "token:ATLASDATADISK:srm://lcg-lrz-se.lrz-muenchen.de:8443/srm/managerv2?SFN=")
+
+#        if thisSite.sitename == "ANALY_TAIWAN_XROOTD":
+#            ec = self.replaceQueuedataField("copysetup", "^srm://f-dpm001.grid.sinica.edu.tw(:8446/srm/managerv2?SFN=)*^root://f-dpm000.grid.sinica.edu.tw/^False^True")
+#            ec = self.replaceQueuedataField("copysetupin", "")
+
 #        if thisSite.sitename == "ANALY_OX" or thisSite.sitename == "ANALY_RAL_XROOTD" or thisSite.sitename == "ANALY_QMUL":
 #            ec = self.replaceQueuedataField("status", "online")
 #            ec = self.replaceQueuedataField("allowfax", "True")
@@ -462,7 +472,7 @@ class SiteInformation(object):
 
         if fullCommand[0] != "":
             # tolog("Extracted the full command from the job parameters: %s" % (fullCommand[0]))
-            # e.g. fullCommand[0] = '--overwriteQueuedata={key1=value1 key2=value2}'
+            # e.g. fullCommand[0] = '--overwriteQueuedata={key1=value1,key2=value2}'
 
             # remove the overwriteQueuedata command from the job parameters
             jobParameters = jobParameters.replace(fullCommand[0], "")

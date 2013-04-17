@@ -387,6 +387,7 @@ class xrootdSiteMover(SiteMover.SiteMover):
         cpt = self.getCopytool(_setup_str)
 
         cmd = "%s %s %s %s" % (_setup_str, cpt, source, dst_loc_pfn)
+#        cmd = "%sXXX %s %s %s" % (_setup_str, cpt, source, dst_loc_pfn)
 #PN
 #        if ".log." in dst_loc_pfn:
 #            cmd = "%s %s %s %s" % (_setup_str, cpt, source, dst_loc_pfn)

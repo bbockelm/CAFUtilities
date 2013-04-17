@@ -25,7 +25,6 @@ class ATLASSiteInformation(SiteInformation):
 
     def __init__(self):
         """ Default initialization """
-# not needed?
 
         pass
 

@@ -82,7 +82,10 @@ class Job:
         self.filesWithFAX = 0              # Number of files staged in by FAX (only reported to jobMetrics in FAX mode)
         self.filesNormalStageOut = 0       # Number of files normally staged out (only reported to jobMetrics in alt stage-out mode)
         self.filesAltStageOut = 0          # Number of files staged out to alternative SE (only reported to jobMetrics in alt stage-out mode)
-        self.experiment = None             # Mancinelli: experiment
+        self.scopeIn = []                  # Rucio scope for in files
+        self.scopeOut = []                 # Rucio scope for out files
+        self.scopeLog = []                 # Rucio scope for log file
+        self.experiment = "undefined"      # Which experiment this job belongs to
 
         # walltime counting for different steps
         self.timeSetup = 0
@@ -135,12 +138,7 @@ class Job:
     def getState(self):
         '''returns jobId, job status and time stamp'''
         return self.jobId, self.result, pUtil.timeStamp()
-  
-    def setExperiment(self, experiment):
-        
-        self.experiment = experiment
 
-    
     def setJobDef(self, data):
         """ set values for a job object from a dictionary data
         which is usually from cgi messages from panda server """
@@ -207,6 +205,20 @@ class Job:
             self.inFilesGuids = data['GUID'].split(",")
         else:
             self.inFilesGuids = []
+
+        # Rucio scopes
+        if data.has_key('scopeIn'):
+            self.scopeIn = data['scopeIn'].split(",")
+        else:
+            self.scopeIn = []
+        if data.has_key('scopeOut'):
+            self.scopeOut = data['scopeOut'].split(",")
+        else:
+            self.scopeOut = []
+        if data.has_key('scopeLog'):
+            self.scopeLog = data['scopeLog'].split(",")
+        else:
+            self.scopeLog = []
 
         self.maxCpuCount = int(data.get('maxCpuCount', 0))
         self.transferType = data.get('transferType', '')

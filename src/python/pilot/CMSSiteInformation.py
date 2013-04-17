@@ -8,6 +8,8 @@
 # import relevant python/pilot modules
 import os
 import re
+import pickle
+import commands
 
 from SiteInformation import SiteInformation  # Main site information class
 from pUtil import tolog                      # Logging method that sends text to the pilot log
@@ -80,35 +82,30 @@ class CMSSiteInformation(SiteInformation):
         if ftype == 'log': range = '%s/log' % str(range)
         return str(range)
 
-    def getProperPaths(self, error, analyJob, token, prodSourceLabel, dsname, filename, JobData, alt=False):
+    def getProperPaths(self, error, analyJob, token, prodSourceLabel, dsname, filename, sitename, JobData, alt=False):
         """ Called by LocalSiteMover, from put_data method, instead of using SiteMover.getProperPaths 
             needed only if LocalSiteMover is used instead of specific Mover
             serve solo se utilizziamo LocalSiteMover al posto dello specifico Mover 
         """
-        """
-        # define the full lfn.
-        error = kwargs.get('error', None)
-        analyJob = kwargs.get('analyJob', None)
-        token = kwargs.get('token', None)
-        prodSourceLabel = kwargs.get('prodSourceLabel', None)
-        dsname = kwargs.get('dsname', None)
-        filename = kwargs.get('filename', None)
-        sitename = kwargs.get('sitename', None)
-        JobData = kwargs.get('JobData', None)
-        #appid = kwargs.get('appid', None)
-        """
-
+        tolog("prodSourceLabel = %s " % prodSourceLabel)
+        tolog("dsname = %s " % dsname)
+        tolog("filename = %s " % filename)
+        tolog("sitename = %s " % sitename)
+        tolog(" analyJob = %s " %  analyJob)
+        tolog("token = %s " % token)
         remoteSE=''
         try:
-            import newJobDef
-            #todo with JSON
-            locals()['newJobDef'] = __import__(os.path.splitext(string.strip(JobData))[0])
-            remoteSE = newJobDef.job.get('fileDestinationSE')
+            import Job 
+            pkl_file = open(JobData, 'rb')
+            newJobDef = pickle.load(pkl_file)
+            #for attr in dir(newJobDef['job']):
+            #    print "obj.%s = %s" % (attr, getattr(newJobDef['job'], attr))
+            remoteSE = newJobDef['job'].fileDestinationSE
             if remoteSE.find(','):
                 remoteSE = remoteSE.split(',')[0]
             tolog("############# getProperPaths - remoteSE: %s - filename: %s" % (remoteSE, filename))
-        except:
-            tolog("############# getProperPaths except!! remoteSE: %s - filename: %s" % (remoteSE, filename)) 
+        except Exception, e:
+            tolog("############# getProperPaths except!! %s !! remoteSE: %s - filename: %s" % (e, remoteSE, filename)) 
             pass
 
         ec = 0
@@ -118,6 +115,7 @@ class CMSSiteInformation(SiteInformation):
         lfcdir = ""
         full_lfn = ""
 
+        """
         if dsname and filename:
             to_strip= '%s%s' % ('-v',dsname.split('-v')[-1:][0])
             tomatch = re.compile('-v([Z0-9-]+)/USER')
@@ -128,8 +126,15 @@ class CMSSiteInformation(SiteInformation):
             ftype = 'root'
             if filename.find('job.log_')>0: ftype = 'log'
             value = int(os.path.splitext(filenameNew)[0].split('_')[-1:][0])
+            tolog("value= %s" % value)
+            tolog("ftype= %s" % ftype)
             if tomatch.match(to_strip):
                 full_lfn_suffix = (('%s/%s/%s') % (dsname.split(to_strip)[0], self.findRange(value,ftype), filename ))
+                tolog(dsname)
+                tolog(to_strip)
+                tolog(tomatch.match(to_strip))
+                tolog(dsname.split(to_strip)[0])
+
             else:
                 tolog(dsname)
                 tolog(to_strip)
@@ -146,13 +151,42 @@ class CMSSiteInformation(SiteInformation):
             tracer_error = 'CMS_OUTDS_NOT_DEFINED'
             ec = error.ERR_STAGEOUTFAILED
             return ec, pilotErrorDiag, tracer_error, dst_gpfn, lfcdir, full_lfn
-
+        """
         #here we should have a check on the async destination and the local site.
         #   if they are the same we should use full_lfn_prefix = '/store/user' otherwise
         #   we should have full_lfn_prefix = '/store/temp/user/'
+       
+        #hnusername = newJobDef['job'].prodUserID.split('/CN=')[1]
+        hnusername = dsname.split('/')[0]
+        if hnusername == 'user':
+            #submitted with c3p1 format, dsname example: user/mcinquil/test000001 
+            hnusername = dsname.split('/')[1]
+            primarydataset = 'PrimaryDataset' #newJobDef['job'].destinationDblock[0].split('/')[2].split('-v1')[0]
+            publishdataset = dsname.split('/')[2]
+        else:
+            #submitted with poc3test format, dsname example: vmancine/GenericTTbar/AsoTest_130403_094107-v1/USER 
+            primarydataset = dsname.split('/')[1]
+            publishdataset = dsname.split('/')[2].split('-v1')[0].split('_')[0]
+        
+        rndcmd = 'den=(0 1 2 3 4 5 6 7 8 9 A B C D E F G H I J K L M N O P Q R S T U V W X Y Z a b c d e f g h i j k l m n o p q r s t u v w x y z); nd=${#den[*]}; randj=${den[$RANDOM % $nd]}${den[$RANDOM % $nd]}${den[$RANDOM % $nd]}; echo $randj'
+        rnd = commands.getoutput(rndcmd)
+        if filename.split('.')[1] == 'root':
+            #output file 
+            newfilename = '%s_%s.%s' % (filename.split('.')[0], rnd, filename.split('.')[1])
+        else:
+            #log file
+            newfilename = '%s%s_%s.%s' % (filename.split('.')[1], filename.split('.')[2], rnd, filename.split('.')[3]) 
+
+        psethash = 'PSETHASH'
+
+        full_lfn_suffix = '%s/%s/%s/%s/%s' % (hnusername, primarydataset, publishdataset, psethash, newfilename)
 
         full_lfn_prefix = '/store/temp/user/'
-
+        if remoteSE and sitename:
+            sitename = sitename.split('ANALY_')[1]
+            if remoteSE == sitename:
+                full_lfn_prefix = '/store/user/'
+            
         full_lfn = '%s%s'%( full_lfn_prefix, full_lfn_suffix )
 
         tolog("full_lfn = %s" % full_lfn )

@@ -8,6 +8,7 @@ import re
 import json
 import traceback
 import pickle
+from ast import literal_eval
 
 EC_MissingArg  =        50113 #10 for ATLAS trf
 EC_CMSRunWrapper =      10040
@@ -78,6 +79,7 @@ except:
 
 #wget sandnox
 if archiveJob:
+    os.environ['WMAGENTJOBDIR'] = os.getcwd()
     print "--- wget for jobO ---"
     output = commands.getoutput('wget -h')
     wgetCommand = 'wget'
@@ -115,12 +117,13 @@ open(destDir + '/__init__.py','w').close()
 from WMCore.WMSpec.Steps.Executors.CMSSW import executeCMSSWStack
 from WMCore.WMRuntime.Bootstrap import setupLogging
 from WMCore.FwkJobReport.Report import Report
+from WMCore.FwkJobReport.Report import FwkJobReportException
 from WMCore.WMSpec.Steps.WMExecutionFailure import WMExecutionFailure
 
 
 try:
     setupLogging('.')
-    jobExitCode, _, _, _ = executeCMSSWStack(taskName = 'Analysis', stepName = 'cmsRun', scramSetup = '', scramCommand = 'scramv1', scramProject = 'CMSSW', scramArch = scramArch, cmsswVersion = cmsswVersion, jobReportXML = 'FrameworkJobReport.xml', cmsswCommand = 'cmsRun', cmsswConfig = 'PSet.py', cmsswArguments = '', workDir = os.getcwd(), userTarball = '', userFiles ='', preScripts = [], scramPreScripts = ['%s/TweakPSet.py %s \'%s\' \'%s\'' % (os.getcwd(), os.getcwd(), inputFile, lumiMask)], stdOutFile = 'cmsRun-stdout.log', stdInFile = 'cmsRun-stderr.log', jobId = 223, jobRetryCount = 0, invokeCmd = 'python')
+    jobExitCode, _, _, _ = executeCMSSWStack(taskName = 'Analysis', stepName = 'cmsRun', scramSetup = '', scramCommand = 'scramv1', scramProject = 'CMSSW', scramArch = scramArch, cmsswVersion = cmsswVersion, jobReportXML = 'FrameworkJobReport.xml', cmsswCommand = 'cmsRun', cmsswConfig = 'PSet.py', cmsswArguments = '', workDir = os.getcwd(), userTarball = archiveJob, userFiles ='', preScripts = [], scramPreScripts = ['%s/TweakPSet.py %s \'%s\' \'%s\'' % (os.getcwd(), os.getcwd(), inputFile, lumiMask)], stdOutFile = 'cmsRun-stdout.log', stdInFile = 'cmsRun-stderr.log', jobId = 223, jobRetryCount = 0, invokeCmd = 'python')
 except WMExecutionFailure, WMex:
     print "caught WMExecutionFailure - code = %s - name = %s - detail = %s" % (WMex.code, WMex.name, WMex.detail)
     exmsg = WMex.name
@@ -138,12 +141,13 @@ except Exception, ex:
 #PoolFileCatalog.xml? Ce ne importa?
 
 # rename output files
-try:
-    for oldName,newName in json.loads(outFiles).iteritems():
-        os.rename(oldName, newName)
-except Exception, ex:
-    handleException("FAILED", EC_MoveOutErr, "Exception while moving the files.")
-    sys.exit(EC_MoveOutErr)
+if jobExitCode == 0:
+    try:
+        for oldName,newName in literal_eval(outFiles).iteritems():
+            os.rename(oldName, newName)
+    except Exception, ex:
+        handleException("FAILED", EC_MoveOutErr, "Exception while moving the files.")
+        sys.exit(EC_MoveOutErr)
 
 #Create the report file
 try:
@@ -174,15 +178,3 @@ except Exception, ex:
     msg = "Exception while handling the job report."
     handleException("FAILED", EC_ReportHandlingErr, msg)
     sys.exit(EC_ReportHandlingErr)
-
-#create the Pool File Catalog (?)
-pfcName = 'PoolFileCatalog.xml'
-pfcFile = open(pfcName,'w')
-pfcFile.write("""<?xml version="1.0" encoding="UTF-8" standalone="no" ?>
-<!-- Edited By POOL -->
-<!DOCTYPE POOLFILECATALOG SYSTEM "InMemory">
-<POOLFILECATALOG>
-
-</POOLFILECATALOG>
-""")
-pfcFile.close()

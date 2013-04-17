@@ -3,7 +3,6 @@ import os
 import socket
 import time
 import re
-import string
 import sys
 
 from pUtil import timeStamp, debugInfo, tolog, readpar, verifyReleaseString,\

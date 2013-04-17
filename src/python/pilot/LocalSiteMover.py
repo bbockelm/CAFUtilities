@@ -251,13 +251,11 @@ class LocalSiteMover(SiteMover.SiteMover):
             return self.put_data_retfail(ec, pilotErrorDiag) 
 
         #Mancinelli: TODO change. This is a Hack.. need to undrestand how to get Job data in a proper manner
-        JobData=  '%s/Job_%s.py' % (os.path.dirname(source), appid)
-        tolog('JobData, Hack for CMS %s ' % JobData)
+        #JobData=  '%s/Job_%s.py' % (os.path.dirname(source), appid)
+        JobData= '%s/jobState-%s-test.pickle' % (os.path.dirname(source), appid)
 
         # get all the proper paths
-        # Mancinelli
-        ec, pilotErrorDiag, tracer_error, dst_gpfn, lfcdir, surl = si.getProperPaths(self.__error, analyJob, token, prodSourceLabel, dsname, filename, JobData)
-        #ec, pilotErrorDiag, tracer_error, dst_gpfn, lfcdir, surl = si.getProperPaths(self.__error, analyJob, token, prodSourceLabel, dsname, filename)
+        ec, pilotErrorDiag, tracer_error, dst_gpfn, lfcdir, surl = si.getProperPaths(self.__error, analyJob, token, prodSourceLabel, dsname, filename, sitename, JobData)
         if ec != 0:
             self.__sendReport(tracer_error, report)
             return self.put_data_retfail(ec, pilotErrorDiag)
@@ -265,8 +263,6 @@ class LocalSiteMover(SiteMover.SiteMover):
         dst_gpfn = surl
         tolog("dst_gpfn: %s" % (dst_gpfn))
 
-        # Mancinelli: not needed for CMS
-        """
         # get the DQ2 site name from ToA
         try:
             _dq2SiteName = self.getDQ2SiteName(surl=dst_gpfn)
@@ -275,7 +271,6 @@ class LocalSiteMover(SiteMover.SiteMover):
         else:
             report['localSite'], report['remoteSite'] = (_dq2SiteName, _dq2SiteName)
             tolog("DQ2 site name: %s" % (_dq2SiteName))
-        """
 
         # build the command
         _params = ""
