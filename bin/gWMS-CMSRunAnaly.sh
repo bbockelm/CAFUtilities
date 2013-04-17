@@ -7,6 +7,8 @@
 #
 
 set -x
+touch jobReport.json
+
 echo "SCRAM_ARCH=$SCRAM_ARCH"
 
 if [ "X$_CONDOR_JOB_AD" != "X" ];
@@ -31,6 +33,8 @@ fi
 
 sh ./CMSRunAnaly.sh "$@"
 EXIT_STATUS=$?
+
+mv jobReport.json jobReport.json.$CRAB_Id
 
 echo "Starting Stageout"
 ./cmscp.py "$PWD/cmsRun-stderr.log?compressCount=3&remoteName=cmsRun_$CRAB_Id.log" "$CRAB_Dest/cmsRun-stderr.log?compressCount=3&remoteName=cmsRun_$CRAB_Id.log"  || exit $?

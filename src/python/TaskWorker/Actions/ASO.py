@@ -83,8 +83,51 @@ class FTSJob(object):
                 return 0
 
             if status in ['FinishedDirty', 'Failed', 'Canceled']:
-                self.status(True)
+                print self.status(True)
                 return 1
+
+def determineSizes(transfer_list):
+    sizes = []
+    for pfn in transfer_list:
+        cmd = "lcg-ls -D srmv2 -b -l %s" % pfn
+        print "+", cmd
+        status, output = commands.getstatusoutput(cmd)
+        if status:
+            sizes.append(-1)
+            continue
+        info = output.split("\n")[0].split()
+        if len(info) < 5:
+            print "Invalid lcg-ls output:\n%s" % output
+            sizes.append(-1)
+            continue
+        try:
+            sizes.append(info[4])
+        except ValueError:
+            print "Invalid lcg-ls output:\n%s" % output
+            sizes.append(-1)
+            continue
+    return sizes
+
+def reportResults(job_id, dest_list, sizes):
+    filtered_dest = [dest_list[i] for i in range(dest_list) if sizes[i] >= 0]
+    filtered_sizes = [i for i in sizes if i >= 0]
+    retval = 0
+
+    cmd = 'condor_qedit %s OutputSizes "%s"' % (job_id, ",".join(filtered_sizes))
+    print "+", cmd
+    status, output = commands.getstatusoutput(cmd)
+    if status:
+        retval = status
+        print output
+
+    cmd = 'condor_qedit %s OutputPFNs "%s"' % (job_id, ",".join(filtered_dest))
+    print "+", cmd
+    status, output = commands.getstatusoutput(cmd)
+    if status:
+        retval = status
+        print output
+
+    return retval
 
 def resolvePFNs(source_site, dest_site, source_dir, dest_dir, filenames):
 
@@ -100,7 +143,7 @@ def resolvePFNs(source_site, dest_site, source_dir, dest_dir, filenames):
         results.append((dest_info[source_site, slfn], dest_info[dest_site, dlfn]))
     return results
 
-def async_stageout(dest_site, source_dir, dest_dir, count, *filenames, **kwargs):
+def async_stageout(dest_site, source_dir, dest_dir, count, job_id, *filenames, **kwargs):
 
     # Here's the magic.  Pull out the site the job ran at from its user log
     if 'source_site' not in kwargs:
@@ -122,7 +165,21 @@ def async_stageout(dest_site, source_dir, dest_dir, count, *filenames, **kwargs)
 
     global g_Job
     g_Job = FTSJob(transfer_list, count)
-    return g_Job.run()
+    fts_job_result = g_Job.run()
+
+    source_list = [i[0] for i in transfer_list]
+    dest_list = [i[1] for i in transfer_list]
+    sizes = determineSizes(source_list)
+    report_result = reportResults(job_id, dest_list, sizes)
+    if report_result:
+        return report_result
+
+    failures = len([i for i in sizes if i<0])
+
+    if failures:
+        return failures
+
+    return fts_job_result
 
 if __name__ == '__main__':
     sys.exit(async_stageout("T2_US_Nebraska", '/store/user/bbockelm/crab_bbockelm_crab3_1', '/store/user/bbockelm', '1', 'dumper_16.root', 'dumper_17.root', source_site='T2_US_Nebraska'))
