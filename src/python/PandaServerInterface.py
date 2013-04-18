@@ -15,27 +15,13 @@ import tempfile
 import logging
 from hashlib import sha1
 
-from WMCore.Credential.Proxy import Proxy
-
 LOGGER = logging.getLogger(__name__)
 
-# configuration
-"""
-try:
-    baseURL = os.environ['PANDA_URL']
-except:
-    baseURL = 'http://pandaserver.cern.ch:25080/server/panda'
-try:
-    baseURLSSL = os.environ['PANDA_URL_SSL']
-except:
-    baseURLSSL = 'https://voatlas249.cern.ch:25443/server/panda'
-"""
 baseURL = 'http://voatlas220.cern.ch:25080/server/panda'
-#baseURLSSL = 'https://voatlas220.cern.ch:25443/server/panda'
 baseURLSSL = 'https://pandaserver.cern.ch:25443/server/panda'
-baseURLCSRVSSL = "https://voatlas178.cern.ch:25443/server/panda"
-baseURLSUB     = "http://pandaserver.cern.ch:25080/trf/user"
 
+baseURLCSRV    = "http://voatlas294.cern.ch:25080/server/panda"
+baseURLCSRVSSL = "https://voatlas294.cern.ch:25443/server/panda"
 
 # exit code
 EC_Failed = 255
@@ -53,7 +39,7 @@ def initProxyParameters(serverkey, servercert, serverdn, uisource, credpath):
     serverCert, serverKey, serverDN, uiSource, credServerPath = servercert, serverkey, serverdn, uisource, credpath
 
 def retrieveUserProxy(user, vo, group, role):
-    return os.getenv('X509_USER_PROXY')
+    from WMCore.Credential.Proxy import Proxy
     myproxyserver = "myproxy.cern.ch"
     defaultDelegation = { 'vo': vo,
                           'logger': LOGGER,
@@ -95,9 +81,13 @@ def _x509():
         pass
     # no valid proxy certificate
     # FIXME raise exception or something?
-    LOGGER.debug("No valid grid proxy certificate found")
-    return ''
 
+    x509 = '/tmp/x509up_u%s' % os.getuid()
+    if os.access(x509,os.R_OK):
+        return x509
+    # no valid proxy certificate
+    # FIXME
+    raise PanDaException("No valid grid proxy certificate found")
 
 # look for a CA certificate directory
 def _x509_CApath():
@@ -249,7 +239,7 @@ class _Curl:
             #com += ' --cert %s' % '/data/certs/prova'
         if self.sslKey != '':
             com += ' --key %s' % self.sslKey
-        # emulate PUT 
+        # emulate PUT
         for key in data.keys():
             com += ' -F "%s=@%s"' % (key,data[key])
         com += ' %s' % url
@@ -415,7 +405,7 @@ def runBrokerage(user, vo, group, role, sites,
             # nightlies
             match = re.search('_(rel_\d+)$',cacheVer)
             if match != None:
-                # use base release as cache version 
+                # use base release as cache version
                 cacheVer = '%s:%s' % (atlasRelease,match.group(1))
         # use cache for brokerage
         data['atlasRelease'] = cacheVer
@@ -525,3 +515,77 @@ def getFullJobStatus(ids,user,vo,group,role,verbose=False):
         type, value, traceBack = sys.exc_info()
         LOGGER.error("ERROR getFullJobStatus : %s %s" % (type,value))
         LOGGER.error(str(traceBack))
+
+
+def putFile(file,verbose=False,useCacheSrv=False,reuseSandbox=False):
+    # size check for noBuild
+    sizeLimit = 100*1024*1024
+
+    fileSize = os.stat(file)[stat.ST_SIZE]
+    if not file.startswith('sources.'):
+        if fileSize > sizeLimit:
+            errStr  = 'Exceeded size limit (%sB >%sB). ' % (fileSize,sizeLimit)
+            errStr += 'Your working directory contains too large files which cannot be put on cache area. '
+            errStr += 'Please submit job without --noBuild/--libDS so that your files will be uploaded to SE'
+            # get logger
+            raise PanDaException(errStr)
+    # instantiate curl
+    curl = _Curl()
+    curl.sslCert = _x509()
+    curl.sslKey  = _x509()
+    curl.verbose = verbose
+    # check duplicationn
+    if reuseSandbox:
+        # get CRC
+        fo = open(file)
+        fileContent = fo.read()
+        fo.close()
+        footer = fileContent[-8:]
+        checkSum,isize = struct.unpack("II",footer)
+        # check duplication
+        url = baseURLSSL + '/checkSandboxFile'
+        data = {'fileSize':fileSize,'checkSum':checkSum}
+        status,output = curl.post(url,data)
+        if status != 0:
+            raise PanDaException('ERROR: Could not check Sandbox duplication with %s' % status)
+        elif output.startswith('FOUND:'):
+            # found reusable sandbox
+            hostName,reuseFileName = output.split(':')[1:]
+            # set cache server hostname
+            global baseURLCSRV
+            baseURLCSRV    = "http://%s:25080/server/panda" % hostName
+            global baseURLCSRVSSL
+            baseURLCSRVSSL = "https://%s:25443/server/panda" % hostName
+            # return reusable filename
+            return 0,"NewFileName:%s:%s" % (hostName, reuseFileName)
+    # execute
+    if useCacheSrv:
+        url = baseURLCSRVSSL + '/putFile'
+    else:
+        url = baseURLSSL + '/putFile'
+    data = {'file':file}
+    status, output = curl.put(url, data)
+    filename = ""
+    servername = ""
+    if status !=0:
+        raise PanDaException("Failure uploading input file into PanDa")
+    else:
+       matchURL = re.search("(http.*://[^/]+)/", baseURLCSRVSSL)
+       return 0, "True:%s:%s" % (matchURL.group(1), file.split('/')[-1])
+    #return curl.put(url,data)
+
+
+def wrappedUuidGen():
+    # check if uuidgen is available
+    tmpSt,tmpOut = commands.getstatusoutput('which uuidgen')
+    if tmpSt == 0:
+        # use uuidgen
+        return commands.getoutput('uuidgen 2>/dev/null')
+    else:
+        # use python uuidgen
+        try:
+            import uuid
+        except:
+            raise ImportError,'uuidgen and uuid.py are unavailable on your system. Please install one of them'
+        return str(uuid.uuid4())
+
