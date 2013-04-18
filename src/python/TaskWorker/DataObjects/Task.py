@@ -54,6 +54,7 @@ class Task(dict):
         self['resubmit_site_blacklist'] = extraargs['siteBlackList'] if 'siteBlackList' in extraargs else []
         self['resubmit_ids'] = extraargs['resubmitList'] if 'resubmitList' in extraargs else []
         self['kill_ids'] = extraargs['killList'] if 'killList' in extraargs else []
+        self['kill_all'] = extraargs['killAll'] if 'killAll' in extraargs else False
 
     def __str__(self):
         """Use me to avoiding to vomiting all parameters around.

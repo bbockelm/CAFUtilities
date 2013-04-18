@@ -1,4 +1,5 @@
 import logging
+import traceback
 
 from WMCore.WMInit import WMInit
 
@@ -63,9 +64,17 @@ class DBPoller(object):
         pendingtasks = getReadyTasks(limit=worklimit)
         for task in pendingtasks:
             newtask = Task()
-            newtask.deserialize(task)
-            self.logger.info("Queuing task %s" % str(task[0]))
-            setReadyTasks(task[0], 'queued')
+            try:
+                newtask.deserialize(task)
+                self.logger.info("Queuing task %s" % str(task[0]))
+            except Exception, exc:
+                msg = "Unknown error operating on task: %s" %str(exc)
+                self.logger.error("Unknown error: %s" %str(exc))
+                self.logger.error(str(traceback.format_exc()))
+                setFailedTasks(task[0], "Failed", msg)
+                continue
+            else:
+                setReadyTasks(task[0], 'queued')
             tasktodo.append((STATE_ACTIONS_MAP[newtask['tm_task_status']], newtask, None))
 
         return tasktodo
@@ -77,6 +86,6 @@ class DBPoller(object):
         if not finished:
             return
         for res in finished:
-            if res.error:
+            if hasattr(res, 'error') and res.error:
                 self.logger.error("Setting %s as failed" % str(res.task))
                 setFailedTasks(res.task['tm_taskname'], "Failed", res.error)
