@@ -1,6 +1,7 @@
 
 import os
 import json
+import commands
 
 dag_fragment = """
 JOB Job%(count)d Job.submit
@@ -83,6 +84,16 @@ def create_subdag(splitter_result, **kwargs):
 
     with open("RunJobs.dag", "w") as fd:
         fd.write(dag)
+
+    const = 'TaskType =?= \"ROOT\" && CRAB_ReqName =?= "%s" && CRAB_UserDN =?= "%s"' % (kwargs['task']['CRAB_ReqName'], kwargs['task']['CRAB_UserDN'])
+    cmd = "condor_qedit -const '%s' CRAB_JobCount %d" % (const, len(jobgroup.getJobs()))
+    print "+", cmd
+    status, output = commands.getstatusoutput(cmd)
+    if status:
+        print output
+        print "Failed to record the number of jobs."
+        return 1
+    
 
 def async_stageout():
     raise NotImplementedError()
