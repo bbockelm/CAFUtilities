@@ -10,12 +10,21 @@ echo "Starting transformation..."
 #   LCG style --
 if [ "x" != "x$VO_CMS_SW_DIR" ]
 then
+        echo 'LCG style'  
 	. $VO_CMS_SW_DIR/cmsset_default.sh
-
+        declare -a VERSIONS
+        VERSIONS=($(ls $VO_CMS_SW_DIR/$SCRAM_ARCH/external/python | grep 2.6))
+        PY_PATH=$VO_CMS_SW_DIR/$SCRAM_ARCH/external/python
+        echo 'python version: ' $VERSIONS
 #   OSG style --
 elif [ "x" != "x$OSG_APP" ]
 then
+        echo 'OSG style'  
 	. $OSG_APP/cmssoft/cms/cmsset_default.sh CMSSW_3_3_2
+        declare -a VERSIONS
+        VERSIONS=($(ls $OSG_APP/cmssoft/cms/external/python | grep 2.6))
+        PY_PATH=$OSG_APP/cmssoft/cms/$SCRAM_ARCH/external/python 
+        echo 'python version: ' $VERSIONS
 else
 	echo "Error: neither OSG_APP nor VO_CMS_SW_DIR environment variables were set" >&2
 	echo "Error: Because of this, we can't load CMSSW. Not good." >&2
@@ -23,15 +32,19 @@ else
 fi
 echo "I think I found the correct CMSSW setup script"
 
-if [ -e $VO_CMS_SW_DIR/COMP/$SCRAM_ARCH/external/python/2.6.4/etc/profile.d/init.sh ]
-then
-	. $VO_CMS_SW_DIR/COMP/$SCRAM_ARCH/external/python/2.6.4/etc/profile.d/init.sh
-	export LD_LIBRARY_PATH=$LD_LIBRARY_PATH:$VO_CMS_SW_DIR/COMP/$SCRAM_ARCH/external/openssl/0.9.7m/lib:$VO_CMS_SW_DIR/COMP/$SCRAM_ARCH/external/bz2lib/1.0.5/lib
-elif [ -e $OSG_APP/cmssoft/cms/COMP/$SCRAM_ARCH/external/python/2.6.4/etc/profile.d/init.sh ]
-then
-	. $OSG_APP/cmssoft/cms/COMP/$SCRAM_ARCH/external/python/2.6.4/etc/profile.d/init.sh
-	export LD_LIBRARY_PATH=$LD_LIBRARY_PATH:$OSG_APP/cmssoft/cms/COMP/$SCRAM_ARCH/external/openssl/0.9.7m/lib:$OSG_APP/cmssoft/cms/COMP/$SCRAM_ARCH/external/bz2lib/1.0.5/lib
+# check for Python2.6 installation 
+N_PYTHON26=${#VERSIONS[*]}
+if [ $N_PYTHON26 -lt 1 ]; then
+    echo "ERROR: No Python2.6 installed in COMP area. It is broken!"
+    exit 1
+else
+    VERSION=${VERSIONS[0]}
+    echo "Python 2.6 found in $PY_PATH/$VERSION";
+    PYTHON26=$PY_PATH/$VERSION
+    # Initialize CMS Python 2.6
+    source $PY_PATH/$VERSION/etc/profile.d/init.sh
 fi
+
 command -v python2.6 > /dev/null
 rc=$?
 if [[ $rc != 0 ]]
@@ -43,10 +56,6 @@ else
 	echo "I found python2.6 at.."
 	echo `which python2.6`
 fi
-
-#get the transformation and unzip it
-#wget http://common-analysis-framework.cern.ch/CMSRunAnaly.zip
-#unzip CMSRunAnaly.zip
 
 wget http://common-analysis-framework.cern.ch/CMSRunAnaly.tgz
 tar xvfzm CMSRunAnaly.tgz
