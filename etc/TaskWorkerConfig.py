@@ -13,7 +13,8 @@ config.Services.DBSUrl = 'http://cmsdbsprod.cern.ch/cms_dbs_prod_global/servlet/
 
 config.section_("TaskWorker")
 config.TaskWorker.polling = 60 #seconds
-config.TaskWorker.nslaves = cpu_count()
+ # we can add one worker per core, plus some spare ones since most of actions wait for I/O
+config.TaskWorker.nslaves = cpu_count() + cpu_count()/2
 
 #The following parameters assumes the installation in "one box" together with the REST
 config.section_("MyProxy")
