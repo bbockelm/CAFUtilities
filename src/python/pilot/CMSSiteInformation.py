@@ -152,34 +152,43 @@ class CMSSiteInformation(SiteInformation):
             ec = error.ERR_STAGEOUTFAILED
             return ec, pilotErrorDiag, tracer_error, dst_gpfn, lfcdir, full_lfn
         """
+
+        if "runGen" in newJobDef['job'].trf:
+            """ case runGen 
+                dsname example: vmancine/GenericTTbar/AsoTest_130403_094107-v1/USER """
+            primarydataset = dsname.split('/')[1]
+            publishdataset = dsname.split('/')[2].split('-v1')[0].split('_')[0]
+            hnusername = dsname.split('/')[0]
+            psethash = 'PSETHASH'
+
+            rndcmd = 'den=(0 1 2 3 4 5 6 7 8 9 A B C D E F G H I J K L M N O P Q R S T U V W X Y Z a b c d e f g h i j k l m n o p q r s t u v w x y z); nd=${#den[*]}; randj=${den[$RANDOM % $nd]}${den[$RANDOM % $nd]}${den[$RANDOM % $nd]}; echo $randj'
+            rnd = commands.getoutput(rndcmd)
+            if filename.split('.')[1] == 'root':
+                #output file 
+                newfilename = '%s_%s.%s' % (filename.split('.')[0], rnd, filename.split('.')[1])
+            else:
+                #log file
+                newfilename = '%s%s_%s.%s' % (filename.split('.')[1], filename.split('.')[2], rnd, filename.split('.')[3])
+
+        else:
+            """ case CMSRunAnaly 
+                dsname example: /RelValProdTTbar/mcinquil-test000001-psethash/USER"""
+            hnusername = dsname.split('/')[2].split('-')[0]
+            primarydataset = dsname.split('/')[1]
+            publishdataset = dsname.split('/')[2].split('-')[1]
+            try:
+                psethash = dsname.split('/')[2].split('-')[2]
+            except Exception, e:
+                psethash = 'psethash'
+
+            newfilename = filename
+
+
+        full_lfn_suffix = '%s/%s/%s/%s/%s' % (hnusername, primarydataset, publishdataset, psethash, newfilename)
+
         #here we should have a check on the async destination and the local site.
         #   if they are the same we should use full_lfn_prefix = '/store/user' otherwise
         #   we should have full_lfn_prefix = '/store/temp/user/'
-       
-        #hnusername = newJobDef['job'].prodUserID.split('/CN=')[1]
-        hnusername = dsname.split('/')[0]
-        if hnusername == 'user':
-            #submitted with c3p1 format, dsname example: user/mcinquil/test000001 
-            hnusername = dsname.split('/')[1]
-            primarydataset = 'PrimaryDataset' #newJobDef['job'].destinationDblock[0].split('/')[2].split('-v1')[0]
-            publishdataset = dsname.split('/')[2]
-        else:
-            #submitted with poc3test format, dsname example: vmancine/GenericTTbar/AsoTest_130403_094107-v1/USER 
-            primarydataset = dsname.split('/')[1]
-            publishdataset = dsname.split('/')[2].split('-v1')[0].split('_')[0]
-        
-        rndcmd = 'den=(0 1 2 3 4 5 6 7 8 9 A B C D E F G H I J K L M N O P Q R S T U V W X Y Z a b c d e f g h i j k l m n o p q r s t u v w x y z); nd=${#den[*]}; randj=${den[$RANDOM % $nd]}${den[$RANDOM % $nd]}${den[$RANDOM % $nd]}; echo $randj'
-        rnd = commands.getoutput(rndcmd)
-        if filename.split('.')[1] == 'root':
-            #output file 
-            newfilename = '%s_%s.%s' % (filename.split('.')[0], rnd, filename.split('.')[1])
-        else:
-            #log file
-            newfilename = '%s%s_%s.%s' % (filename.split('.')[1], filename.split('.')[2], rnd, filename.split('.')[3]) 
-
-        psethash = 'PSETHASH'
-
-        full_lfn_suffix = '%s/%s/%s/%s/%s' % (hnusername, primarydataset, publishdataset, psethash, newfilename)
 
         full_lfn_prefix = '/store/temp/user/'
         if remoteSE and sitename:
