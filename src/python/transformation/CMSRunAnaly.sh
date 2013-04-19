@@ -22,7 +22,7 @@ then
         echo 'OSG style'  
 	. $OSG_APP/cmssoft/cms/cmsset_default.sh CMSSW_3_3_2
         declare -a VERSIONS
-        VERSIONS=($(ls $OSG_APP/cmssoft/cms/external/python | grep 2.6))
+        VERSIONS=($(ls $OSG_APP/cmssoft/cms/$SCRAM_ARCH/external/python | grep 2.6))
         PY_PATH=$OSG_APP/cmssoft/cms/$SCRAM_ARCH/external/python 
         echo 'python version: ' $VERSIONS
 else
