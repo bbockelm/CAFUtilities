@@ -103,7 +103,7 @@ class PanDAInjection(PanDAAction):
                :return: FileSpec object for the output file."""
             outfile = FileSpec()
             if log:
-                outfile.lfn = "%s.job.log_%d_%s.tgz" % (pandajob.jobName, jobid, lfnhanger)
+                outfile.lfn = "job.log_%d_%s.tgz" % (jobid, lfnhanger)
                 outfile.type = 'log'
             else:
                 outfile.lfn = '%s_%d_%s%s' %(os.path.splitext(of)[0], jobid, lfnhanger, os.path.splitext(of)[1])
