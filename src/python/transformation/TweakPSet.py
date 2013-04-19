@@ -9,7 +9,7 @@ agentNumber = 0
 lfnBase = None
 outputMods = [] #TODO should not be hardcoded but taken from the config (how?)
 inputFiles = literal_eval(sys.argv[2])
-lumiMask = literal_eval(sys.argv[3])
+runAndLumis = literal_eval(sys.argv[3])
 
-pset = SetupCMSSWPsetCore( sys.argv[1], map(str, inputFiles), lumiMask, agentNumber, lfnBase, outputMods)
+pset = SetupCMSSWPsetCore( sys.argv[1], map(str, inputFiles), runAndLumis, agentNumber, lfnBase, outputMods)
 pset()
