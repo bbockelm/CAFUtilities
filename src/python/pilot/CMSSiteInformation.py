@@ -191,10 +191,10 @@ class CMSSiteInformation(SiteInformation):
         #   we should have full_lfn_prefix = '/store/temp/user/'
 
         full_lfn_prefix = '/store/temp/user/'
-        if remoteSE and sitename:
-            sitename = sitename.split('ANALY_')[1]
-            if remoteSE == sitename:
-                full_lfn_prefix = '/store/user/'
+        #if remoteSE and sitename:
+        #    sitename = sitename.split('ANALY_')[1]
+        #    if remoteSE == sitename:
+        #        full_lfn_prefix = '/store/user/'
             
         full_lfn = '%s%s'%( full_lfn_prefix, full_lfn_suffix )
 
