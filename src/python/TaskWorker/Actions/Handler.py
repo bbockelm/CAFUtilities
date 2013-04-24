@@ -9,6 +9,7 @@ from TaskWorker.Actions.PanDAInjection import PanDAInjection
 from TaskWorker.Actions.PanDAgetSpecs import PanDAgetSpecs
 from TaskWorker.Actions.PanDAKill import PanDAKill
 from TaskWorker.Actions.Specs2Jobs import Specs2Jobs
+from TaskWorker.Actions.MyProxyLogon import MyProxyLogon
 from TaskWorker.WorkerExceptions import WorkerHandlerException
 
 class TaskHandler(object):
@@ -68,6 +69,7 @@ def handleNewTask(config, task, *args, **kwargs):
     :*args and *kwargs: extra parameters currently not defined
     :return: the result of the handler operation."""
     handler = TaskHandler(task)
+    handler.addWork( MyProxyLogon(config=config, myproxylen=60*60*24) )
     handler.addWork( DBSDataDiscovery(config=config) )
     handler.addWork( Splitter(config=config) )
     handler.addWork( PanDABrokerage(pandaconfig=config) )
@@ -82,6 +84,7 @@ def handleResubmit(config, task, *args, **kwargs):
     :*args and *kwargs: extra parameters currently not defined
     :return: the result of the handler operation."""
     handler = TaskHandler(task)
+    handler.addWork( MyProxyLogon(config=config, myproxylen=60*60*24) )
     handler.addWork( PanDAgetSpecs(pandaconfig=config) )
     handler.addWork( Specs2Jobs(config=config) )
     handler.addWork( PanDABrokerage(pandaconfig=config) )
@@ -96,6 +99,7 @@ def handleKill(config, task, *args, **kwargs):
     :*args and *kwargs: extra parameters currently not defined
     :return: the result of the handler operation."""
     handler = TaskHandler(task)
+    handler.addWork( MyProxyLogon(config=config, myproxylen=60*5) )
     handler.addWork( PanDAKill(pandaconfig=config) )
     return handler.actionWork(args, kwargs)
 
