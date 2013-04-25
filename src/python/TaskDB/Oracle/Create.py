@@ -53,7 +53,7 @@ class Create(DBCreator):
         tm_user_vo VARCHAR(255) NOT NULL,
         tm_user_role VARCHAR(255),
         tm_user_group VARCHAR(255),
-        tm_publish_name VARCHAR(255),
+        tm_publish_name VARCHAR(1000),
         tm_asyncdest VARCHAR(255) NOT NULL,
         tm_dbs_url VARCHAR(255) NOT NULL,
         tm_publish_dbs_url VARCHAR(255),
