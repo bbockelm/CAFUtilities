@@ -28,7 +28,7 @@ DLSVER=DLS_1_1_3
 DLSREPO=bbockelm
 
 CRABSERVERDIR=$STARTDIR/CRABServer
-CRABSERVERVER=3.1.0-dagman3
+CRABSERVERVER=3.1.0-dagman6
 CRABSERVERREPO=bbockelm
 
 CRABCLIENTDIR=$STARTDIR/CRABClient
@@ -58,9 +58,10 @@ curl -L https://github.com/$CRABCLIENTREPO/CRABClient/archive/$CRABCLIENTVER.tar
 curl -L https://httplib2.googlecode.com/files/httplib2-0.8.tar.gz | tar zx || exit 2
 curl -L http://download.cherrypy.org/cherrypy/3.2.2/CherryPy-3.2.2.tar.gz | tar zx || exit 2
 curl -L https://pypi.python.org/packages/source/S/SQLAlchemy/SQLAlchemy-0.8.0.tar.gz | tar zx || exit 2
+curl -L http://hcc-briantest.unl.edu/CRAB3-condor-libs.tar.gz | tar zx *.so* || exit 2
 
 pushd WMCore-$WMCOREVER/src/python
-zip -r $STARTDIR/CRAB3.zip WMCore || exit 3
+zip -r $STARTDIR/CRAB3.zip WMCore PSetTweaks || exit 3
 popd
 
 pushd CAFTaskWorker-$TASKWORKERVER/src/python
@@ -97,9 +98,19 @@ pushd CherryPy-3.2.2/
 zip -r $STARTDIR/CRAB3.zip cherrypy || exit 3
 popd
 
-echo 'export PATH=`dirname ${BASH_SOURCE[0]}`:$PATH' > setup.sh
+cat > setup.sh << EOF
+export CRAB3_BASEPATH=\`dirname \${BASH_SOURCE[0]}\`
+export PATH=\$CRAB3_BASEPATH:\$PATH
+export PYTHONPATH=\$CRAB3_BASEPATH/CRAB3.zip:\$CRAB3_BASEPATH/lib/python:\$PYTHONPATH
+export LD_LIBRARY_PATH=\$CRAB3_BASEPATH/lib:\$CRAB3_BASEPATH/lib/condor:\$LD_LIBRARY_PATH
+EOF
 
-tar zcf $ORIGDIR/TaskManagerRun.tar.gz CRAB3.zip setup.sh crab3 crab gWMS-CMSRunAnaly.sh || exit 4
+mkdir -p bin
+cp CRABServer-$CRABSERVERVER/bin/* bin/
+cp CAFUtilities-$CAFUTILITIESVER/src/python/transformation/CMSRunAnaly.sh bin/
+
+tar zcf $ORIGDIR/TaskManagerRun.tar.gz CRAB3.zip setup.sh crab3 crab gWMS-CMSRunAnaly.sh bin || exit 4
+tar zcf $ORIGDIR/CRAB3-gWMS.tar.gz CRAB3.zip setup.sh crab3 crab gWMS-CMSRunAnaly.sh bin lib || exit 4
 
 popd
 
