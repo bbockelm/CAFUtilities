@@ -13,6 +13,9 @@ class Task(dict):
 
            :arg *args/**kwargs: key/value pairs to update the dictionary."""
         self.update(*args, **kwargs)
+        # Not obliged to have a proxy once the workflow is pulled from the database
+        # potentially we can, but we can enforce that in the actions as well
+        self['user_proxy'] = None
 
     def deserialize(self, task):
         """Deserialize a task from a list format to the self Task dictionary.

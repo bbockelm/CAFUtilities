@@ -10,7 +10,8 @@ from TaskWorker.Actions.PanDAgetSpecs import PanDAgetSpecs
 from TaskWorker.Actions.PanDAKill import PanDAKill
 from TaskWorker.Actions.Specs2Jobs import Specs2Jobs
 from TaskWorker.Actions.MyProxyLogon import MyProxyLogon
-from TaskWorker.WorkerExceptions import WorkerHandlerException
+from TaskWorker.WorkerExceptions import WorkerHandlerException, StopHandler
+from TaskWorker.DataObjects.Result import Result
 
 class TaskHandler(object):
     """Handling the set of operations to be performed."""
@@ -45,6 +46,11 @@ class TaskHandler(object):
             t0 = time.time()
             try:
                 output = work.execute(nextinput, task=self._task)
+            except StopHandler, sh:
+                msg = "Controlled stop of handler for %s on %s " % (self._task, str(sh))
+                self.logger.error(msg)
+                nextinput = Result(task=self._task, result='StopHandler exception received, controlled stop')
+                break
             except Exception, exc:
                 msg = "Problem handling %s because of %s failure, tracebak follows\n" % (self._task, str(exc))
                 msg += str(traceback.format_exc())
@@ -56,7 +62,6 @@ class TaskHandler(object):
                 nextinput = output.result
             except AttributeError:
                 nextinput = output
-            ## here we handle potential errors from output.errors
         tot1 = time.time()
         return nextinput
 

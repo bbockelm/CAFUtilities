@@ -1,7 +1,10 @@
-from WMCore.Credential.Proxy import Proxy                                                                                                                                                                                      
+from WMCore.Credential.Proxy import Proxy
+
+from TaskDB.Interface.Task.SetTasks import setFailedTasks
 
 from TaskWorker.Actions.TaskAction import TaskAction
 from TaskWorker.DataObjects.Result import Result
+from TaskWorker.WorkerExceptions import StopHandler
 
 # We won't do anything if the proxy is shorted then 1 hour
 # NB: in the PoC we had 24 hours, but does that make sense
@@ -35,9 +38,9 @@ class MyProxyLogon(TaskAction):
         timeleft = proxy.getTimeLeft(userproxy)
         if timeleft is None or timeleft <= 0:
             msg = "Impossible to retrieve proxy from %s for %s." %(proxycfg['myProxySvr'], proxycfg['userDN'])
-            result = Result(task=kwargs['task'], error=msg)
+            setFailedTasks(kwargs['task']['tm_taskname'], "Failed", msg)
+            raise StopHandler(msg)
         else:
             kwargs['task']['user_proxy'] = userproxy
             result = Result(task=kwargs['task'], result='OK')
-
         return result
