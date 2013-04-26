@@ -3,7 +3,7 @@
 _MakeJobGroup_
 """
 import logging
-import TaskDB.Connection as DBConnect
+import Databases.Connection as DBConnect
 
 logger = logging.getLogger(__name__)
 
@@ -11,7 +11,7 @@ def addJobGroup(taskName, jobdefid, status, blocks, jobgroup_failure):
     """
     _addJobGroup_
     """
-    factory = DBConnect.getConnection()
+    factory = DBConnect.getConnection(package="Databases.TaskDB")
     newJobGroup = factory(classname = "JobGroup.AddJobGroup")
     try:
 #Actually I am not sure I want the following three lines... It can trigger errors later

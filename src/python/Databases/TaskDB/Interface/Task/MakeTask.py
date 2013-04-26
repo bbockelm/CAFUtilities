@@ -6,7 +6,7 @@ API for creating a new request in the database
 
 """
 import logging
-import TaskDB.Connection as DBConnect
+import Databases.Connection as DBConnect
 
 def createTask(taskName, panda_jobset_id, tm_task_status, tm_task_failure, \
                tm_job_sw, tm_job_arch, tm_input_dataset, tm_site_whitelist, tm_site_blacklist, tm_split_algo, \
@@ -22,7 +22,7 @@ def createTask(taskName, panda_jobset_id, tm_task_status, tm_task_failure, \
     etc need to be added with other API calls
 
     """
-    factory = DBConnect.getConnection()
+    factory = DBConnect.getConnection(package='Databases.TaskDB')
 
     #  //
     # // does the task name already exist?

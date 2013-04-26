@@ -1,6 +1,6 @@
 #!/usr/bin/env python
 """
-_TaskManager.TaskDB.Oracle_
+_Databases.TaskDB.Oracle_
 
 Oracle Compatibility layer for Task Manager DB
 """
