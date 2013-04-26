@@ -10,6 +10,8 @@ import os
 import re
 import pickle
 import commands
+import shlex
+import getopt
 
 from SiteInformation import SiteInformation  # Main site information class
 from pUtil import tolog                      # Logging method that sends text to the pilot log
@@ -69,7 +71,8 @@ class CMSSiteInformation(SiteInformation):
                 return True, rangeEnd
         rangeStart=(rangeStart+1000)
         return False, rangeStart
-
+    
+    """
     def findRange(self, value, ftype = 'root'):
         rangeStart = 0
         while True:
@@ -81,11 +84,47 @@ class CMSSiteInformation(SiteInformation):
         range = int(range)+1
         if ftype == 'log': range = '%s/log' % str(range)
         return str(range)
+    """
+ 
+    def findRange(self, job, filename):
+        jobNumber = int(self.extractJobPar(job, 'jobNumber'))
+        filesPerJob = len(job.outFiles)
+        if job.logFile:
+            filesPerJob += 1
+
+        range = ((filesPerJob)*(jobNumber+1) / 1000 +1)*1000
+
+        if filename.split('.')[-1] != 'root':
+            range = '%s/log' % str(range) 
+
+        return str(range)
+
+
+    def extractJobPar(self, job, par):
+
+        strpars = job.jobPars
+        try:
+            cmdopt = shlex.split(strpars)
+            opts, args = getopt.getopt(cmdopt, "a:o:",
+                               ["sourceURL=","jobNumber=","inputFile=","lumiMask=","cmsswVersion=","scramArch="])
+            
+            for o, a in opts:
+                if o == "--%s" % par:
+                    tolog("Found option %s = %s" % (par, a))
+                    return a 
+            return "" 
+        except Exception, e:
+            tolog("Failed to parse option command in job.jobPars = %s -- cause: %s" % (strpars, e))
+            return ""
+
 
     def getProperPaths(self, error, analyJob, token, prodSourceLabel, dsname, filename, sitename, JobData, alt=False):
         """ Called by LocalSiteMover, from put_data method, instead of using SiteMover.getProperPaths 
             needed only if LocalSiteMover is used instead of specific Mover
             serve solo se utilizziamo LocalSiteMover al posto dello specifico Mover 
+   
+            full lfn format:
+            /store/user/<yourHyperNewsusername>/<primarydataset>/<publish_data_name>/<PSETHASH>/<NNNN>/<output_file_name>
         """
         tolog("prodSourceLabel = %s " % prodSourceLabel)
         tolog("dsname = %s " % dsname)
@@ -93,14 +132,16 @@ class CMSSiteInformation(SiteInformation):
         tolog("sitename = %s " % sitename)
         tolog(" analyJob = %s " %  analyJob)
         tolog("token = %s " % token)
-        remoteSE=''
+        job = None
+        remoteSE = ''
         try:
             import Job 
             pkl_file = open(JobData, 'rb')
             newJobDef = pickle.load(pkl_file)
+            job = newJobDef['job']
             #for attr in dir(newJobDef['job']):
             #    print "obj.%s = %s" % (attr, getattr(newJobDef['job'], attr))
-            remoteSE = newJobDef['job'].fileDestinationSE
+            remoteSE = job.fileDestinationSE
             if remoteSE.find(','):
                 remoteSE = remoteSE.split(',')[0]
             tolog("############# getProperPaths - remoteSE: %s - filename: %s" % (remoteSE, filename))
@@ -175,16 +216,28 @@ class CMSSiteInformation(SiteInformation):
                 dsname example: /RelValProdTTbar/mcinquil-test000001-psethash/USER"""
             hnusername = dsname.split('/')[2].split('-')[0]
             primarydataset = dsname.split('/')[1]
-            publishdataset = dsname.split('/')[2].split('-')[1]
-            try:
-                psethash = dsname.split('/')[2].split('-')[2]
-            except Exception, e:
-                psethash = 'psethash'
+            publishdataset = '-'.join(dsname.split('/')[2].split('-')[1:-1])
+            #try:
+            #    psethash = dsname.split('/')[2].split('-')[2]
+            #except Exception, e:
+            #    psethash = 'psethash'
+            psethash = dsname.split('/')[2].split('-')[-1] 
 
             newfilename = filename
 
 
-        full_lfn_suffix = '%s/%s/%s/%s/%s' % (hnusername, primarydataset, publishdataset, psethash, newfilename)
+        # Calculate value of NNNN folder 
+
+        if job:
+            try:
+                nnnn = self.findRange(job, newfilename)
+            except Exception, e:
+                tolog('Mancinellidebug error = %s' % e)
+                nnnn = 'NNNN'
+        else:
+            nnnn = 'NNNN'
+
+        full_lfn_suffix = '%s/%s/%s/%s/%s/%s' % (hnusername, primarydataset, publishdataset, psethash, nnnn, newfilename)
 
         #here we should have a check on the async destination and the local site.
         #   if they are the same we should use full_lfn_prefix = '/store/user' otherwise
