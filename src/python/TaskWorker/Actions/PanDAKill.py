@@ -1,4 +1,4 @@
-from TaskDB.Interface.Task.SetTasks import setStatusTask
+from Databases.TaskDB.Interface.Task.SetTasks import setStatusTask
 from PandaServerInterface import killJobs
 
 from TaskWorker.Actions.PanDAAction import PanDAAction

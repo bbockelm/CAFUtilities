@@ -1,5 +1,5 @@
-from TaskDB.Interface.Task.SetTasks import setInjectedTasks, setFailedTasks
-from TaskDB.Interface.JobGroup.MakeJobGroups import addJobGroup
+from Databases.TaskDB.Interface.Task.SetTasks import setInjectedTasks, setFailedTasks
+from Databases.TaskDB.Interface.JobGroup.MakeJobGroups import addJobGroup
 import PandaServerInterface ## change this to specific imports
 from taskbuffer.JobSpec import JobSpec
 from taskbuffer.FileSpec import FileSpec

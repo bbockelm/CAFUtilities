@@ -1,6 +1,6 @@
 from WMCore.Credential.Proxy import Proxy
 
-from TaskDB.Interface.Task.SetTasks import setFailedTasks
+from Databases.TaskDB.Interface.Task.SetTasks import setFailedTasks
 
 from TaskWorker.Actions.TaskAction import TaskAction
 from TaskWorker.DataObjects.Result import Result

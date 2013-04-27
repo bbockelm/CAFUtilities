@@ -3,8 +3,8 @@ import traceback
 
 from WMCore.WMInit import WMInit
 
-from TaskDB.Interface.Task.GetTasks import getReadyTasks
-from TaskDB.Interface.Task.SetTasks import setReadyTasks, setFailedTasks
+from Databases.TaskDB.Interface.Task.GetTasks import getReadyTasks
+from Databases.TaskDB.Interface.Task.SetTasks import setReadyTasks, setFailedTasks
 
 from TaskWorker.DataObjects.Task import Task
 from TaskWorker.Actions.Handler import handleResubmit, handleNewTask, handleKill
