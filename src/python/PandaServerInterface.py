@@ -451,19 +451,30 @@ def runBrokerage(user, vo, group, role, sites,
 
 # get PandaIDs for a JobID
 #TODO check if we can remove user, vo, group, role,
-def getPandIDsWithJobID(jobID,user,vo,group,role,dn=None,nJobs=0,verbose=False):
+def getPandIDsWithJobID(jobID,user,vo,group,role,dn=None,nJobs=0,verbose=False,userproxy=None,credpath=None):
     # instantiate curl
     curl = _Curl()
-    curl.sslCert = _x509()
-    curl.sslKey  = _x509()
-
     curl.verbose = verbose
     # execute
     url = baseURLSSL + '/getPandIDsWithJobID'
     data = {'jobID':jobID, 'nJobs':nJobs}
     if dn != None:
         data['dn'] = dn
+
+    # Temporary solution we cache the proxy file
+    filehandler, proxyfile = tempfile.mkstemp(dir=credpath)
+    with open(proxyfile, 'w') as pf:
+        pf.write(userproxy)
+
+    # set it ...
+    curl.sslCert = proxyfile if proxyfile else x509()
+    curl.sslKey  = proxyfile if proxyfile else x509()
+    # call him ...
     status,output = curl.post(url,data)
+
+    # Always delete it!
+    os.remove(proxyfile)
+
     if status!=0:
         LOGGER.debug(output)
         return status,None
