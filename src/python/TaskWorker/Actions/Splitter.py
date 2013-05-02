@@ -2,8 +2,11 @@ from WMCore.DataStructs.Subscription import Subscription
 from WMCore.DataStructs.Workflow import Workflow
 from WMCore.JobSplitting.SplitterFactory import SplitterFactory
 
+from Databases.TaskDB.Interface.Task.SetTasks import setFailedTasks
+
 from TaskWorker.Actions.TaskAction import TaskAction
 from TaskWorker.DataObjects.Result import Result
+from TaskWorker.WorkerExceptions import StopHandler
 
 
 class Splitter(TaskAction):
@@ -18,7 +21,18 @@ class Splitter(TaskAction):
         jobfactory = splitter(subscription=wmsubs)
         splitparam = kwargs['task']['tm_split_args']
         splitparam['algorithm'] = kwargs['task']['tm_split_algo']
-        return Result(task=kwargs['task'], result=jobfactory(**splitparam))
+        factory = jobfactory(**splitparam)
+        if len(factory) == 0:
+            # Understanding that no jobs could be created given the splitting arguments
+            # with the given input dataset information: NO IDEA WHY.
+            # NB: we assume that split can't happen, then task is failed
+            msg = "Splitting %s on %s with %s does not generate any job" %(kwargs['task']['tm_taskname'],
+                                                                           kwargs['task']['tm_input_dataset'],
+                                                                           kwargs['task']['tm_split_algo'])
+            self.logger.debug(msg)
+            setFailedTasks(kwargs['task']['tm_taskname'], "Failed", msg)
+            raise StopHandler(msg)
+        return Result(task=kwargs['task'], result=factory)
 
 
 if __name__ == '__main__':
