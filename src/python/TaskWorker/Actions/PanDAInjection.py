@@ -88,6 +88,7 @@ class PanDAInjection(PanDAAction):
         pandajob.jobName = jobname
         pandajob.prodUserID = task['tm_user_dn']
         pandajob.destinationDBlock = outdataset
+        pandajob.prodDBlock = task['tm_input_dataset']
         pandajob.prodSourceLabel = 'user'
         pandajob.computingSite = site
         pandajob.cloud = PandaServerInterface.PandaSites[pandajob.computingSite]['cloud']
@@ -149,9 +150,12 @@ class PanDAInjection(PanDAAction):
         pandajob.jobParameters    += '--inputFile=\'%s\' ' % json.dumps(infiles)
         pandajob.jobParameters    += '--lumiMask=\'%s\' ' % json.dumps(job['mask']['runAndLumis'])
         pandajob.jobParameters    += '-o "%s" ' % str(outjobpar)
-        #job.jobParameters    += '%s ' % str(wfid) #TODO Is it necessary? Why has it been removed?
+        pandajob.jobParameters    += '--dbs_url=%s ' % task['tm_dbs_url']
+        pandajob.jobParameters    += '--publish_dbs_url=%s ' % task['tm_publish_dbs_url']
+        pandajob.jobParameters    += '%s ' % task['tm_taskname'] #Needed by ASO
 
         if 'panda_oldjobid' in job and job['panda_oldjobid']:
+        pandajob.jobParameters    += '%s ' % task['tm_taskname'] #Needed by ASO
             pandajob.parentID = job['panda_oldjobid']
 
         pandajob.addFile(outFileSpec(log=True))
