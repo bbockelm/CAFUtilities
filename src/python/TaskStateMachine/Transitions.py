@@ -49,7 +49,7 @@ class Transitions(dict):
         #  - be closed when considered finished/(to-)archive, 'closed'
         #  - be 'killed'
         #  - asked to be resubmitted, 'resubmit'
-        self.setdefault('submitted', ['killed', 'resubmit', 'closed'])
+        self.setdefault('submitted', ['killed', 'resubmit', 'failed', 'completed'])
 
         # A 'failed' workflow can:
         #  - only be 'closed'
