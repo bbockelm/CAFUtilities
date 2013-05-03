@@ -1,6 +1,9 @@
 from WMCore.WorkQueue.WorkQueueUtils import get_dbs
 
+from Databases.TaskDB.Interface.Task.SetTasks import setFailedTasks
+
 from TaskWorker.Actions.DataDiscovery import DataDiscovery
+from TaskWorker.WorkerExceptions import StopHandler
 
 
 class DBSDataDiscovery(DataDiscovery):
@@ -17,7 +20,12 @@ class DBSDataDiscovery(DataDiscovery):
         # with locations = True
         blocks = [ x['Name'] for x in dbs.getFileBlocksInfo(kwargs['task']['tm_input_dataset'], locations=False)]
         #Create a map for block's locations: for each block get the list of locations
-        locations = map(lambda x: map(lambda y: y.host, x.locations), dbs.dls.getLocations(list(blocks),  showProd = True))
+        ll = dbs.dls.getLocations(list(blocks),  showProd = True)
+        if len(ll) == 0:
+            msg = "No location was found for %s in %s." %(kwargs['task']['tm_input_dataset'],kwargs['task']['tm_dbs_url'])
+            setFailedTasks(kwargs['task']['tm_taskname'], "Failed", msg)
+            raise StopHandler(msg)
+        locations = map(lambda x: map(lambda y: y.host, x.locations), ll)
         locationsmap = dict(zip(blocks, locations))
         filedetails = dbs.listDatasetFileDetails(kwargs['task']['tm_input_dataset'], True)
 
