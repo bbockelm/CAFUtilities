@@ -155,7 +155,6 @@ class PanDAInjection(PanDAAction):
         pandajob.jobParameters    += '%s ' % task['tm_taskname'] #Needed by ASO
 
         if 'panda_oldjobid' in job and job['panda_oldjobid']:
-        pandajob.jobParameters    += '%s ' % task['tm_taskname'] #Needed by ASO
             pandajob.parentID = job['panda_oldjobid']
 
         pandajob.addFile(outFileSpec(log=True))
