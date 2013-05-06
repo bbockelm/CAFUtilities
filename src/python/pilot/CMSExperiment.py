@@ -230,7 +230,7 @@ class CMSExperiment(Experiment):
             try:
                 cmdopt = shlex.split(strpars)
                 opts, args = getopt.getopt(cmdopt, "a:o:",
-                               ["sourceURL=","jobNumber=","inputFile=","lumiMask=","cmsswVersion=","scramArch="])
+                               ["sourceURL=","jobNumber=","inputFile=","runAndLumis=","cmsswVersion=","scramArch="])
                 for o, a in opts:
                     if o == "--scramArch":
                         scramArch = a

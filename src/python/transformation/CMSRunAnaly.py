@@ -34,7 +34,7 @@ def handleException(exitAcronymn, exitCode, exitMsg):
 #removed -p parameter of generic transformation
 opts, args = getopt.getopt(sys.argv[1:], "a:o:r:", ["sourceURL=",
     #paramters coming from -p:
-    "jobNumber=", "cmsswVersion=", "scramArch=", "inputFile=", "lumiMask="
+    "jobNumber=", "cmsswVersion=", "scramArch=", "inputFile=", "runAndLumis="
 ])
 
 for o, a in opts:
@@ -54,8 +54,8 @@ for o, a in opts:
         scramArch = a
     if o == "--inputFile":
         inputFile = a
-    if o == "--lumiMask":
-        lumiMask = a
+    if o == "--runAndLumis":
+        runAndLumis = a
 
 try:
     print "=== parameters ==="
@@ -66,7 +66,7 @@ try:
     print cmsswVersion
     print scramArch
     print inputFile
-    print lumiMask
+    print runAndLumis
     print outFiles
     print "==================="
 except:
@@ -123,7 +123,7 @@ from WMCore.WMSpec.Steps.WMExecutionFailure import WMExecutionFailure
 
 try:
     setupLogging('.')
-    jobExitCode, _, _, _ = executeCMSSWStack(taskName = 'Analysis', stepName = 'cmsRun', scramSetup = '', scramCommand = 'scramv1', scramProject = 'CMSSW', scramArch = scramArch, cmsswVersion = cmsswVersion, jobReportXML = 'FrameworkJobReport.xml', cmsswCommand = 'cmsRun', cmsswConfig = 'PSet.py', cmsswArguments = '', workDir = os.getcwd(), userTarball = archiveJob, userFiles ='', preScripts = [], scramPreScripts = ['%s/TweakPSet.py %s \'%s\' \'%s\'' % (os.getcwd(), os.getcwd(), inputFile, lumiMask)], stdOutFile = 'cmsRun-stdout.log', stdInFile = 'cmsRun-stderr.log', jobId = 223, jobRetryCount = 0, invokeCmd = 'python')
+    jobExitCode, _, _, _ = executeCMSSWStack(taskName = 'Analysis', stepName = 'cmsRun', scramSetup = '', scramCommand = 'scramv1', scramProject = 'CMSSW', scramArch = scramArch, cmsswVersion = cmsswVersion, jobReportXML = 'FrameworkJobReport.xml', cmsswCommand = 'cmsRun', cmsswConfig = 'PSet.py', cmsswArguments = '', workDir = os.getcwd(), userTarball = archiveJob, userFiles ='', preScripts = [], scramPreScripts = ['%s/TweakPSet.py %s \'%s\' \'%s\'' % (os.getcwd(), os.getcwd(), inputFile, runAndLumis)], stdOutFile = 'cmsRun-stdout.log', stdInFile = 'cmsRun-stderr.log', jobId = 223, jobRetryCount = 0, invokeCmd = 'python')
 except WMExecutionFailure, WMex:
     print "caught WMExecutionFailure - code = %s - name = %s - detail = %s" % (WMex.code, WMex.name, WMex.detail)
     exmsg = WMex.name
