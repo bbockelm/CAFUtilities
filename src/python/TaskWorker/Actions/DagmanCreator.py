@@ -19,6 +19,24 @@ RETRY ASO%(count)d 3
 PARENT Job%(count)d CHILD ASO%(count)d
 """
 
+dag_fragment_workaround = """
+JOB Job%(count)d Job.submit.%(count)d
+#SCRIPT PRE  Job%(count)d dag_bootstrap.sh PREJOB $RETRY $JOB
+#SCRIPT POST Job%(count)d dag_bootstrap.sh POSTJOB $RETRY $JOB
+#PRE_SKIP Job%(count)d 3
+#TODO: Disable retries for now - fail fast to help debug
+#RETRY Job%(count)d 3
+VARS Job%(count)d count="%(count)d" runAndLumiMask="%(runAndLumiMask)s" inputFiles="%(inputFiles)s"
+
+JOB ASO%(count)d ASO.submit
+VARS ASO%(count)d count="%(count)d" outputFiles="%(remoteOutputFiles)s"
+RETRY ASO%(count)d 3
+
+PARENT Job%(count)d CHILD ASO%(count)d
+"""
+
+htcondor_78_workaround = True
+
 def make_specs(task, jobgroup, availablesites, outfiles, startjobid):
     specs = []
     i = startjobid
@@ -80,7 +98,15 @@ def create_subdag(splitter_result, **kwargs):
 
     dag = ""
     for spec in specs:
-        dag += dag_fragment % spec
+        if htcondor_78_workaround:
+            with open("Job.submit", "r") as fd:
+                with open("Job.submit.%(count)d" % spec, "w") as out_fd:
+                    out_fd.write("+desiredSites=\"%(desiredSites)s\"" % spec)
+                    out_fd.write("+CRAB_localOutputFiles=\"%(localOutputFiles)s\"" % spec)
+                    out_fd.write(fd.read())
+            dag += dag_fragment_workaround % spec
+        else:
+            dag += dag_fragment % spec
 
     with open("RunJobs.dag", "w") as fd:
         fd.write(dag)
