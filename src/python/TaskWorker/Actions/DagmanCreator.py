@@ -101,8 +101,8 @@ def create_subdag(splitter_result, **kwargs):
         if htcondor_78_workaround:
             with open("Job.submit", "r") as fd:
                 with open("Job.submit.%(count)d" % spec, "w") as out_fd:
-                    out_fd.write("+desiredSites=\"%(desiredSites)s\"" % spec)
-                    out_fd.write("+CRAB_localOutputFiles=\"%(localOutputFiles)s\"" % spec)
+                    out_fd.write("+desiredSites=\"%(desiredSites)s\"\n" % spec)
+                    out_fd.write("+CRAB_localOutputFiles=\"%(localOutputFiles)s\"\n" % spec)
                     out_fd.write(fd.read())
             dag += dag_fragment_workaround % spec
         else:
