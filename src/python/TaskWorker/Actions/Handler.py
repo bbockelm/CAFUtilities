@@ -12,6 +12,9 @@ from TaskWorker.Actions.Specs2Jobs import Specs2Jobs
 from TaskWorker.Actions.MyProxyLogon import MyProxyLogon
 from TaskWorker.WorkerExceptions import WorkerHandlerException, StopHandler
 from TaskWorker.DataObjects.Result import Result
+## from TaskWorker.Actions.Dagman import DagmanCreator, DagmanResubmitter, DagmanKiller
+
+DEFAULT_BACKEND = 'panda'
 
 class TaskHandler(object):
     """Handling the set of operations to be performed."""
@@ -65,24 +68,35 @@ class TaskHandler(object):
         tot1 = time.time()
         return nextinput
 
-
 def handleNewTask(config, task, *args, **kwargs):
-    """Performs the injection into PanDA of a new task
+    """Performs the injection of a new task
 
     :arg WMCore.Configuration config: input configuration
     :arg TaskWorker.DataObjects.Task task: the task to work on
     :*args and *kwargs: extra parameters currently not defined
-    :return: the result of the handler operation."""
+    :return: the handler."""
     handler = TaskHandler(task)
     handler.addWork( MyProxyLogon(config=config, myproxylen=60*60*24) )
     handler.addWork( DBSDataDiscovery(config=config) )
     handler.addWork( Splitter(config=config) )
-    handler.addWork( PanDABrokerage(pandaconfig=config) )
-    handler.addWork( PanDAInjection(pandaconfig=config) )
+
+    def glidein(config):
+        """Performs the injection of a new task into Glidein
+        :arg WMCore.Configuration config: input configuration"""
+        raise NotImplementedError
+        #handler.addWork( DagmanCreator(glideinconfig=config) )
+
+    def panda(config):
+        """Performs the injection into PanDA of a new task
+        :arg WMCore.Configuration config: input configuration"""
+        handler.addWork( PanDABrokerage(pandaconfig=config) )
+        handler.addWork( PanDAInjection(pandaconfig=config) )
+
+    locals()[getattr(config.TaskWorker, 'backend', DEFAULT_BACKEND).lower()](config)
     return handler.actionWork(args)
 
 def handleResubmit(config, task, *args, **kwargs):
-    """Performs the re-injection into PanDA of a failed jobs
+    """Performs the re-injection of failed jobs
 
     :arg WMCore.Configuration config: input configuration
     :arg TaskWorker.DataObjects.Task task: the task to work on
@@ -90,14 +104,25 @@ def handleResubmit(config, task, *args, **kwargs):
     :return: the result of the handler operation."""
     handler = TaskHandler(task)
     handler.addWork( MyProxyLogon(config=config, myproxylen=60*60*24) )
-    handler.addWork( PanDAgetSpecs(pandaconfig=config) )
-    handler.addWork( Specs2Jobs(config=config) )
-    handler.addWork( PanDABrokerage(pandaconfig=config) )
-    handler.addWork( PanDAInjection(pandaconfig=config) )
-    return handler.actionWork(args, kwargs)
+    def glidein(config):
+        """Performs the re-injection into Glidein
+        :arg WMCore.Configuration config: input configuration"""
+        raise NotImplementedError
+        #handler.addWork( DagmanResubmitter(glideinconfig=config) )
+
+    def panda(config):
+        """Performs the re-injection into PanDA
+        :arg WMCore.Configuration config: input configuration"""
+        handler.addWork( PanDAgetSpecs(pandaconfig=config) )
+        handler.addWork( Specs2Jobs(config=config) )
+        handler.addWork( PanDABrokerage(pandaconfig=config) )
+        handler.addWork( PanDAInjection(pandaconfig=config) )
+
+    locals()[getattr(config.TaskWorker, 'backend', DEFAULT_BACKEND).lower()](config)
+    return handler.actionWork(args)
 
 def handleKill(config, task, *args, **kwargs):
-    """Asks PanDA to kill jobs
+    """Asks to kill jobs
 
     :arg WMCore.Configuration config: input configuration
     :arg TaskWorker.DataObjects.Task task: the task to work on
@@ -105,7 +130,18 @@ def handleKill(config, task, *args, **kwargs):
     :return: the result of the handler operation."""
     handler = TaskHandler(task)
     handler.addWork( MyProxyLogon(config=config, myproxylen=60*5) )
-    handler.addWork( PanDAKill(pandaconfig=config) )
+    def glidein(config):
+        """Performs kill of jobs sent through Glidein
+        :arg WMCore.Configuration config: input configuration"""
+        raise NotImplementedError
+        #handler.addWork( DagmanKiller(glideinconfig=config) )
+
+    def panda(config):
+        """Performs the re-injection into PanDA
+        :arg WMCore.Configuration config: input configuration"""
+        handler.addWork( PanDAKill(pandaconfig=config) )
+
+    locals()[getattr(config.TaskWorker, 'backend', DEFAULT_BACKEND).lower()](config)
     return handler.actionWork(args, kwargs)
 
 if __name__ == '__main__':

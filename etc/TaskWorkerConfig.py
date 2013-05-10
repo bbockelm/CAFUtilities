@@ -16,6 +16,8 @@ config.section_("TaskWorker")
 config.TaskWorker.polling = 60 #seconds
  # we can add one worker per core, plus some spare ones since most of actions wait for I/O
 config.TaskWorker.nslaves = cpu_count() + cpu_count()/2
+config.TaskWorker.backend = 'panda'
+#config.TaskWorker.backend = 'glidein'
 
 #The following parameters assumes the installation in "one box" together with the REST
 config.section_("MyProxy")
