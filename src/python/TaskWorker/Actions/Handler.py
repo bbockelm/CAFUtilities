@@ -98,7 +98,7 @@ def handleKill(config, task, *args, **kwargs):
 
 if __name__ == '__main__':
     print "New task"
-    handleNewTask(task=None)
+    handleNewTask(None, task={})
     print "\nResubmit task"
     handleResubmit(task=None)
     print "\nKill task"

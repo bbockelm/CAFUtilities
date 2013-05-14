@@ -31,6 +31,9 @@ then
    echo "Destination: $CRAB_Dest"
 fi
 
+date
+hostname
+
 sh ./CMSRunAnaly.sh "$@"
 EXIT_STATUS=$?
 
