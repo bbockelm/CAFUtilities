@@ -62,7 +62,7 @@ class Create(DBCreator):
         tm_edm_outfiles VARCHAR(255),
         tm_transformation VARCHAR(255) NOT NULL,
         tm_arguments CLOB,
-        PRIMARY KEY(tm_taskname)
+        CONSTRAINT taskname_pk PRIMARY KEY(tm_taskname)
         )
         """
         self.create['c_jobgroups'] = """
@@ -73,11 +73,12 @@ class Create(DBCreator):
         panda_jobdef_status VARCHAR(255) NOT NULL,
         tm_data_blocks CLOB,
         panda_jobgroup_failure CLOB,
-        UNIQUE(panda_jobdef_id),
-        FOREIGN KEY(tm_taskname) references
+        tm_user_dn VARCHAR(255) NOT NULL,
+        CONSTRAINT task_user_un UNIQUE(panda_jobdef_id, tm_user_dn),
+        CONSTRAINT taskname_fk FOREIGN KEY(tm_taskname) references
             tasks(tm_taskname)
             ON DELETE CASCADE,
-        PRIMARY KEY(tm_jobgroups_id)
+        CONSTRAINT jobgroup_id_pk PRIMARY KEY(tm_jobgroups_id)
         )
         """
         self.create['c_jobgroups_id_seq'] = """
