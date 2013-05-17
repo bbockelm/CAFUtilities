@@ -73,7 +73,7 @@ CRAB_HEADERS = \
 +CRAB_BlacklistT1 = %(blacklistT1)s
 """
 
-job_submit = CRAB_HEADERS + \
+JOB_SUBMIT = CRAB_HEADERS + \
 """
 CRAB_Attempt = %(attempt)d
 CRAB_ISB = %(userisburl_flatten)s
@@ -107,7 +107,7 @@ leave_in_queue = (JobStatus == 4) && ((StageOutFinish =?= UNDEFINED) || (StageOu
 queue
 """
 
-async_submit = CRAB_HEADERS + \
+ASYNC_SUBMIT = CRAB_HEADERS + \
 """
 +TaskType = "ASO"
 +CRAB_Id = $(count)
@@ -185,7 +185,7 @@ def escape_strings_to_classads(input):
 # TODO: DagmanCreator started life as a flat module, then the DagmanCreator class
 # was later added.  We need to come back and make the below methods class methods
 
-def make_job_submit(task):
+def makeJobSubmit(task):
     if os.path.exists("Job.submit"):
         return
     # From here on out, we convert from tm_* names to the DataWorkflow names
@@ -224,7 +224,7 @@ def make_job_submit(task):
     info['lumis'] = []
     info = escape_strings_to_classads(info)
     with open("Job.submit", "w") as fd:
-        fd.write(job_submit % info)
+        fd.write(JOB_SUBMIT % info)
 
     return info
 
@@ -263,7 +263,7 @@ def create_subdag(splitter_result, **kwargs):
     startjobid = 0
     specs = []
 
-    info = make_job_submit(kwargs['task'])
+    info = makeJobSubmit(kwargs['task'])
 
     outfiles = kwargs['task']['tm_outfiles'] + kwargs['task']['tm_tfile_outfiles'] + kwargs['task']['tm_edm_outfiles']
 
