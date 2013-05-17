@@ -1,14 +1,14 @@
 
-if [ "X$CRAB3_CHECKOUT" = "X" ]; then
+if [ "X$CRAB_DEV_BASE" = "X" ]; then
 
-   export CRAB3_CHECKOUT=~/projects
+   export CRAB_DEV_BASE=~/projects
 
 fi
 
-export CRAB3_TEST_BASE=$CRAB3_CHECKOUT/CAFTaskWorker
+export CRAB3_TEST_BASE=$CRAB_DEV_BASE/CAFTaskWorker
 
-export PYTHONPATH=$CRAB3_CHECKOUT/CAFTaskWorker/src/python:$CRAB3_CHECKOUT/WMCore/src/python:$CRAB3_CHECKOUT/CAFUtilities/src/python:$CRAB3_CHECKOUT/DLS/Client/LFCClient:$CRAB3_CHECKOUT/DBS/Clients/Python
-export PYTHONPATH=$CRAB3_CHECKOUT/CAFTaskWorker/test/python:$PYTHONPATH
+export PYTHONPATH=$CRAB_DEV_BASE/CAFTaskWorker/src/python:$CRAB_DEV_BASE/WMCore/src/python:$CRAB_DEV_BASE/CAFUtilities/src/python:$CRAB_DEV_BASE/DLS/Client/LFCClient:$CRAB_DEV_BASE/DBS/Clients/Python
+export PYTHONPATH=$CRAB_DEV_BASE/CAFTaskWorker/test/python:$PYTHONPATH
 
-exec pylint --rcfile=$CRAB3_CHECKOUT/WMCore/standards/.pylintrc "$@"
+exec pylint --rcfile=$CRAB_DEV_BASE/WMCore/standards/.pylintrc "$@"
 
