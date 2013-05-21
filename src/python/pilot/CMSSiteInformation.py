@@ -87,7 +87,7 @@ class CMSSiteInformation(SiteInformation):
     """
  
     def findRange(self, job, filename):
-        jobNumber = int(self.extractJobPar(job, 'jobNumber'))
+        jobNumber = int(self.extractJobPar(job, '--jobNumber'))
         filesPerJob = len(job.outFiles)
         if job.logFile:
             filesPerJob += 1
@@ -106,12 +106,13 @@ class CMSSiteInformation(SiteInformation):
         try:
             cmdopt = shlex.split(strpars)
             opts, args = getopt.getopt(cmdopt, "a:o:",
-                               ["sourceURL=","jobNumber=","inputFile=","lumiMask=","cmsswVersion=","scramArch="])
+                               ["sourceURL=","jobNumber=","inputFile=","lumiMask=","runAndLumis=","dbs_url=","publish_dbs_url=","cmsswVersion=","scramArch="])
             
             for o, a in opts:
-                if o == "--%s" % par:
+                if o == par:
                     tolog("Found option %s = %s" % (par, a))
-                    return a 
+                    return a
+            tolog("Option %s not found " % par) 
             return "" 
         except Exception, e:
             tolog("Failed to parse option command in job.jobPars = %s -- cause: %s" % (strpars, e))

@@ -80,6 +80,25 @@ class CMSExperiment(Experiment):
         tolog("Using %s" % (pybin))
         return ec, pilotErrorDiag, pybin
 
+    def extractJobPar(self, job, par):
+
+        strpars = job.jobPars
+        try:
+            cmdopt = shlex.split(strpars)
+            opts, args = getopt.getopt(cmdopt, "a:o:",
+                               ["sourceURL=","jobNumber=","inputFile=","lumiMask=","runAndLumis=","dbs_url=","publish_dbs_url=","cmsswVersion=","scramArch="])
+
+            for o, a in opts:
+                if o == par:
+                    tolog("Found option %s = %s" % (par, a))
+                    return a
+            tolog("Option %s not found " % par)
+            return ""
+        except Exception, e:
+            tolog("Failed to parse option command in job.jobPars = %s -- cause: %s" % (strpars, e))
+            return ""
+
+
     def getCMSAnalysisRunCommand(self, job, jobSite, trfName):
 
         from RunJobUtilities import updateCopysetups
@@ -104,12 +123,30 @@ class CMSExperiment(Experiment):
         else:
             tolog("Could not add user proxy to the run command (proxy does not exist)")
 
-        # set up analysis trf
-        run_command += './%s %s' % (trfName, job.jobPars)
+        params = ["-a", "-o", "--sourceURL", "--jobNumber", "--cmsswVersion", "--scramArch", "--inputFile", "--runAndLumis"]
+        val = {}
+        for p in params:
+            val[p] = self.extractJobPar(job, p)
 
+        paramsstring  = '-a %s '                % val["-a"]
+        paramsstring += '--sourceURL %s '       % val["--sourceURL"]
+        paramsstring += '--jobNumber=%s '       % val["--jobNumber"]
+        paramsstring += '--cmsswVersion=%s '    % val["--cmsswVersion"]
+        paramsstring += '--scramArch=%s '       % val["--scramArch"]
+        paramsstring += "--inputFile='%s' "     % val["--inputFile"]
+        paramsstring += " --runAndLumis='%s' "  % val["--runAndLumis"]
+        paramsstring += '-o "%s" '              % val["-o"]
+
+        tolog("Mancinellidebug paramsstring = %s" % paramsstring)
+        # set up analysis trf
+        run_command += './%s %s' % (trfName, paramsstring)
 
         return ec, pilotErrorDiag, run_command
 
+
+    def isAnalysisJob(self, trf):
+        """ Always true for the moment"""
+        return True
 
 
     def getJobExecutionCommand(self, job, jobSite, pilot_initdir):
@@ -134,29 +171,20 @@ class CMSExperiment(Experiment):
 
         pilotErrorDiag = ""
         cmd = ""
-        special_setup_cmd = ""
-        pysiteroot = ""
-        siteroot = ""
         JEM = "NO"
 
         # Is it's an analysis job or not?
-        analysisJob = isAnalysisJob(job.trf)
-
-        # Get the region string
-        region = readpar('region')
+        analysisJob = self.isAnalysisJob(job.trf)
 
         # Command used to download trf
         wgetCommand = 'wget'
 
         # Get the cmtconfig value
         cmtconfig = getCmtconfig(job.cmtconfig)
+        if cmtconfig != "":
+            tolog("cmtconfig: %s" % (cmtconfig))
 
-        # Set python executable (after SITEROOT has been set)
-        if siteroot == "":
-            try:
-                siteroot = os.environ['SITEROOT']
-            except:
-                tolog("Warning: $SITEROOT unknown at this stage (3)")
+        # Set python executable
         ec, pilotErrorDiag, pybin = self.setPython()
         if ec == self.__error.ERR_MISSINGINSTALLATION:
             return ec, pilotErrorDiag, "", special_setup_cmd, JEM, cmtconfig
@@ -168,82 +196,31 @@ class CMSExperiment(Experiment):
             if status != 0:
                 return status, pilotErrorDiag, "", special_setup_cmd, JEM, cmtconfig
 
-            # Set up the run command
-            if job.prodSourceLabel == 'ddm' or job.prodSourceLabel == 'software':
-                cmd = '%s %s %s' % (pybin, trfName, job.jobPars)
-            else:
-                scramArchSetup = self.getScramArchSetupCommand(job)
-                if "runGen" in job.trf: 
-                    ec, pilotErrorDiag, cmdtrf = self.getAnalysisRunCommand(job, jobSite, trfName)
-                else:
-                    ec, pilotErrorDiag, cmdtrf = self.getCMSAnalysisRunCommand(job, jobSite, trfName)
-                cmd = "%s %s" % (scramArchSetup, cmdtrf)
-                if ec != 0:
-                    return ec, pilotErrorDiag, "", special_setup_cmd, JEM, cmtconfig
-
-        elif verifyReleaseString(job.homePackage) != 'NULL' and job.homePackage != ' ':
-            cmd = "%s %s/%s %s" % (pybin, job.homePackage, job.trf, job.jobPars)
-        else:
-            cmd = "%s %s %s" % (pybin, job.trf, job.jobPars)
+            scramArchSetup = self.getScramArchSetupCommand(job)
+            ec, pilotErrorDiag, cmdtrf = self.getCMSAnalysisRunCommand(job, jobSite, trfName)
+            cmd = "%s %s" % (scramArchSetup, cmdtrf)
 
         # Set special_setup_cmd if necessary
         special_setup_cmd = self.getSpecialSetupCommand()
-
-        # Should the Job Execution Monitor (JEM) be used?
-        if readpar('cloud') == "DE": # Currently only available in DE cloud
-            metaOut = {}
-            try:
-                import sys
-                from JEMstub import updateRunCommand4JEM
-                # If JEM should be used, the command will get updated by the JEMstub automatically.
-                cmd = updateRunCommand4JEM(cmd, job, jobSite, tolog, metaOut=metaOut)
-            except:
-                # On failure, cmd stays the same
-                tolog("Failed to update run command for JEM - will run unmonitored.")
-
-            # Is JEM to be used?
-            if metaOut.has_key("JEMactive"):
-                JEM = metaOut["JEMactive"]
-
-            tolog("Use JEM: %s (dictionary = %s)" % (JEM, str(metaOut)))
-
-        elif '--enable-jem' in cmd:
-            tolog("!!WARNING!!1111!! JEM can currently only be used on certain sites in DE")
+        if special_setup_cmd != "":
+            tolog("Special setup command: %s" % (special_setup_cmd))
 
         # Pipe stdout/err for payload to files
         cmd += " 1>%s 2>%s" % (job.stdout, job.stderr)
         tolog("\nCommand to run the job is: \n%s" % (cmd))
 
-        if special_setup_cmd != "":
-            tolog("Special setup command: %s" % (special_setup_cmd))
-
-        return 0, pilotErrorDiag, cmd, special_setup_cmd, JEM, cmtconfig
-
+        return 0, pilotErrorDiag, cmd, special_setup_cmd, JEM, cmtconfig        
 
     def getScramArchSetupCommand(self, job):
         """ Looks for the scramArch option in the job.jobPars attribute and build 
             the command to export the SCRAMARCH env variable with the correct value """
 
-        strpars = ""
-        if "CMSRunAnaly" in job.trf:
-            strpars = job.jobPars
-            try:
-                cmdopt = shlex.split(strpars)
-                opts, args = getopt.getopt(cmdopt, "a:o:",
-                               ["sourceURL=","jobNumber=","inputFile=","runAndLumis=","cmsswVersion=","scramArch="])
-                for o, a in opts:
-                    if o == "--scramArch":
-                        scramArch = a
-                        cmdScramArchSetup = "export SCRAM_ARCH=%s;" % scramArch
-                        tolog("Found option scramArch = %s" % scramArch)
-                        tolog("Adding %s to job_setup.sh" % cmdScramArchSetup) 
-                        return cmdScramArchSetup
-            except Exception, e:
-                tolog("Failed to parse option command in job.jobPars = %s -- cause: %s" % (strpars, e))
-                return ""
-        else:
-            """Not needed for runGen """
-            return "" 
+        scramArch = self.extractJobPar(job, '--scramArch')
+        if scramArch != "":
+            return "export SCRAM_ARCH=%s;" % scramArch
+        return ""
+
+
 
     def getSpecialSetupCommand(self):
         """ Set special_setup_cmd if necessary """
