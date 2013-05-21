@@ -58,10 +58,9 @@ CRAB_HEADERS = \
 +CRAB_JobSW = %(jobsw)s
 +CRAB_JobArch = %(jobarch)s
 +CRAB_InputData = %(inputdata)s
-+CRAB_ISB = %(userisburl)s
++CRAB_ISB = %(cacheurl)s
 +CRAB_SiteBlacklist = %(siteblacklist)s
 +CRAB_SiteWhitelist = %(sitewhitelist)s
-+CRAB_AdditionalUserFiles = %(adduserfiles)s
 +CRAB_AdditionalOutputFiles = %(addoutputfiles)s
 +CRAB_EDMOutputFiles = %(edmoutfiles)s
 +CRAB_TFileOutputFiles = %(tfileoutfiles)s
@@ -69,15 +68,13 @@ CRAB_HEADERS = \
 +CRAB_UserDN = %(userdn)s
 +CRAB_UserHN = %(userhn)s
 +CRAB_AsyncDest = %(asyncdest)s
-+CRAB_Campaign = %(campaign)s
 +CRAB_BlacklistT1 = %(blacklistT1)s
 """
 
 JOB_SUBMIT = CRAB_HEADERS + \
 """
 CRAB_Attempt = %(attempt)d
-CRAB_ISB = %(userisburl_flatten)s
-CRAB_AdditionalUserFiles = %(adduserfiles_flatten)s
+CRAB_ISB = %(cacheurl_flatten)s
 CRAB_AdditionalOutputFiles = %(addoutputfiles_flatten)s
 CRAB_JobSW = %(jobsw_flatten)s
 CRAB_JobArch = %(jobarch_flatten)s
@@ -141,8 +138,8 @@ def escape_strings_to_classads(input):
     for the job submit file string.
     """
     info = {}
-    for var in 'workflow', 'jobtype', 'jobsw', 'jobarch', 'inputdata', 'splitalgo', 'algoargs', 'configdoc', 'userisburl', \
-           'cachefilename', 'cacheurl', 'userhn', 'publishname', 'asyncdest', 'campaign', 'dbsurl', 'publishdbsurl', \
+    for var in 'workflow', 'jobtype', 'jobsw', 'jobarch', 'inputdata', 'splitalgo', 'algoargs', \
+           'cachefilename', 'cacheurl', 'userhn', 'publishname', 'asyncdest', 'dbsurl', 'publishdbsurl', \
            'userdn', 'requestname':
         val = input[var]
         if val == None:
@@ -153,7 +150,7 @@ def escape_strings_to_classads(input):
     for var in 'savelogsflag', 'blacklistT1':
         info[var] = int(input[var])
 
-    for var in 'siteblacklist', 'sitewhitelist', 'blockwhitelist', 'blockblacklist', 'adduserfiles', 'addoutputfiles', \
+    for var in 'siteblacklist', 'sitewhitelist', 'addoutputfiles', \
            'tfileoutfiles', 'edmoutfiles':
         val = input[var]
         if val == None:
@@ -167,9 +164,8 @@ def escape_strings_to_classads(input):
     info['algoargs'] = '"' + json.dumps({'halt_job_on_file_boundaries': False, 'splitOnRun': False, splitArgName : input['algoargs']}).replace('"', r'\"') + '"'
     info['attempt'] = 0
 
-    for var in ["userisburl", "jobsw", "jobarch", "cachefilename", "asyncdest"]:
+    for var in ["cacheurl", "jobsw", "jobarch", "cachefilename", "asyncdest"]:
         info[var+"_flatten"] = input[var]
-    info["adduserfiles_flatten"] = json.dumps(input['adduserfiles'])
 
     # TODO: PanDA wrapper wants some sort of dictionary.
     info["addoutputfiles_flatten"] = '{}'
@@ -197,14 +193,11 @@ def makeJobSubmit(task):
     info['inputdata'] = info['tm_input_dataset']
     info['splitalgo'] = info['tm_split_algo']
     info['algoargs'] = info['tm_split_args']
-    info['configdoc'] = ''
-    info['userisburl'] = info['tm_cache_url']
     info['cachefilename'] = info['tm_user_sandbox']
-    info['cacheurl'] = info['userisburl']
+    info['cacheurl'] = info['tm_cache_url']
     info['userhn'] = info['tm_username']
     info['publishname'] = info['tm_publish_name']
     info['asyncdest'] = info['tm_asyncdest']
-    info['campaign'] = ''
     info['dbsurl'] = info['tm_dbs_url']
     info['publishdbsurl'] = info['tm_publish_dbs_url']
     info['userdn'] = info['tm_user_dn']
@@ -213,9 +206,6 @@ def makeJobSubmit(task):
     info['blacklistT1'] = 0
     info['siteblacklist'] = task['tm_site_blacklist']
     info['sitewhitelist'] = task['tm_site_whitelist']
-    info['blockwhitelist'] = ''
-    info['blockblacklist'] = ''
-    info['adduserfiles'] = ''
     info['addoutputfiles'] = task['tm_outfiles']
     info['tfileoutfiles'] = task['tm_tfile_outfiles']
     info['edmoutfiles'] = task['tm_edm_outfiles']
