@@ -298,8 +298,8 @@ def create_subdag(splitter_result, **kwargs):
     with open("RunJobs.dag", "w") as fd:
         fd.write(dag)
 
-    task_name = kwargs['task'].get('CRAB_ReqName', kwargs['task']['tm_taskname'])
-    userdn = kwargs['task'].get('CRAB_UserDN', kwargs['task']['tm_user_dn'])
+    task_name = kwargs['task'].get('CRAB_ReqName', kwargs['task'].get('tm_taskname', ''))
+    userdn = kwargs['task'].get('CRAB_UserDN', kwargs['task'].get('tm_user_dn', ''))
 
     # When running in standalone mode, we want to record the number of jobs in the task
     if ('CRAB_ReqName' in kwargs['task']) and ('CRAB_UserDN' in kwargs['task']):
