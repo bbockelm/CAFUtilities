@@ -59,6 +59,7 @@ curl -L https://httplib2.googlecode.com/files/httplib2-0.8.tar.gz | tar zx || ex
 curl -L http://download.cherrypy.org/cherrypy/3.2.2/CherryPy-3.2.2.tar.gz | tar zx || exit 2
 curl -L https://pypi.python.org/packages/source/S/SQLAlchemy/SQLAlchemy-0.8.0.tar.gz | tar zx || exit 2
 curl -L http://hcc-briantest.unl.edu/CRAB3-condor-libs.tar.gz | tar zx *.so* || exit 2
+curl -L http://cmsrep.cern.ch/cmssw/cms/RPMS/slc5_amd64_gcc462/external+py2-pyopenssl+0.11-1-1.slc5_amd64_gcc462.rpm | rpm2cpio | cpio -uimd || exit 2
 
 pushd WMCore-$WMCOREVER/src/python
 zip -r $STARTDIR/CRAB3.zip WMCore PSetTweaks || exit 3
@@ -97,6 +98,9 @@ popd
 pushd CherryPy-3.2.2/
 zip -r $STARTDIR/CRAB3.zip cherrypy || exit 3
 popd
+
+pushd opt/cmssw/slc5_amd64_gcc462/external/py2-pyopenssl/0.11/lib/python2.6/site-packages
+mv OpenSSL $STARTDIR/lib/python/
 
 cat > setup.sh << EOF
 export CRAB3_BASEPATH=\`dirname \${BASH_SOURCE[0]}\`
