@@ -1,5 +1,5 @@
-from TaskDB.Interface.Task.SetTasks import setInjectedTasks, setFailedTasks
-from TaskDB.Interface.JobGroup.MakeJobGroups import addJobGroup
+from Databases.TaskDB.Interface.Task.SetTasks import setInjectedTasks, setFailedTasks
+from Databases.TaskDB.Interface.JobGroup.MakeJobGroups import addJobGroup
 import PandaServerInterface ## change this to specific imports
 from taskbuffer.JobSpec import JobSpec
 from taskbuffer.FileSpec import FileSpec
@@ -9,11 +9,16 @@ from TaskWorker.DataObjects.Result import Result
 from TaskWorker.WorkerExceptions import PanDAIdException, PanDAException, NoAvailableSite
 
 import time
-import urllib2
 import commands
 import traceback
 import os
 import json
+import string
+import random
+
+
+# the length of the string to be appended to the every out file (before their extension)
+LFNHANGERLEN = 6
 
 
 class PanDAInjection(PanDAAction):
@@ -37,10 +42,11 @@ class PanDAInjection(PanDAAction):
         self.logger.debug('Single PanDA injection resulted in %d distinct jobsets and %d jobdefs.' % (len(jobsetdef), sum([len(jobsetdef[k]) for k in jobsetdef])))
         return jobsetdef
 
-    def makeSpecs(self, task, jobgroup, site, jobset, jobdef, startjobid, basejobname):
+    def makeSpecs(self, task, outdataset, jobgroup, site, jobset, jobdef, startjobid, basejobname, lfnhanger):
         """Building the specs
 
         :arg TaskWorker.DataObject.Task task: the task to work on
+        :arg str outdataset: the output dataset name where all the produced files will be placed
         :arg WMCore.DataStructs.JobGroup jobgroup: the group containing the jobs
         :arg str site: the borkered site where to run the jobs
         :arg int jobset: the PanDA jobset corresponding to the current task
@@ -56,21 +62,23 @@ class PanDAInjection(PanDAAction):
             #if i > 10:
             #    break
             jobname = "%s-%d" %(basejobname, i)
-            pandajobspec.append(self.createJobSpec(task, job, jobset, jobdef, site, jobname, i))
+            pandajobspec.append(self.createJobSpec(task, outdataset, job, jobset, jobdef, site, jobname, lfnhanger, i))
             i += 1
         return pandajobspec, i
 
-    def createJobSpec(self, task, job, jobset, jobdef, site, jobname, jobid):
+    def createJobSpec(self, task, outdataset, job, jobset, jobdef, site, jobname, lfnhanger, jobid):
         """Create a spec for one job
 
         :arg TaskWorker.DataObject.Task task: the task to work on
+        :arg str outdataset: the output dataset name where all the produced files will be placed
         :arg WMCore.DataStructs.Job job: the abstract job
         :arg int jobset: the PanDA jobset corresponding to the current task
         :arg int jobdef: the PanDA jobdef where to append the current jobs --- not used
         :arg str site: the borkered site where to run the jobs
         :arg str jobname: the job name
+        :arg str lfnhanger: the random string to be added in the output file name
+        :arg int jobid: incremental job number
         :return: the sepc object."""
-        datasetname = 'user/%s/%s' % (task['tm_username'], task['tm_publish_name'])
 
         pandajob = JobSpec()
         ## always setting a job definition ID
@@ -79,12 +87,15 @@ class PanDAInjection(PanDAAction):
         pandajob.jobsetID = jobset if jobset else -1
         pandajob.jobName = jobname
         pandajob.prodUserID = task['tm_user_dn']
-        pandajob.destinationDBlock = datasetname
+        pandajob.destinationDBlock = outdataset
+        pandajob.prodDBlock = task['tm_input_dataset']
         pandajob.prodSourceLabel = 'user'
         pandajob.computingSite = site
         pandajob.cloud = PandaServerInterface.PandaSites[pandajob.computingSite]['cloud']
         pandajob.destinationSE = 'local'
-        pandajob.transformation = '%s/%s' % (PandaServerInterface.baseURLSUB, task['tm_transformation'])
+        pandajob.transformation = task['tm_transformation']
+        ## need to initialize this
+        pandajob.metadata = ''
 
         def outFileSpec(of=None, log=False):
             """Local routine to create an FileSpec for the an job output/log file
@@ -93,10 +104,10 @@ class PanDAInjection(PanDAAction):
                :return: FileSpec object for the output file."""
             outfile = FileSpec()
             if log:
-                outfile.lfn = "%s.job.log_%d.tgz" % (pandajob.jobName, jobid)
+                outfile.lfn = "job.log_%d_%s.tgz" % (jobid, lfnhanger)
                 outfile.type = 'log'
             else:
-                outfile.lfn = '%s_%d%s' %(os.path.splitext(of)[0], jobid, os.path.splitext(of)[1])
+                outfile.lfn = '%s_%d_%s%s' %(os.path.splitext(of)[0], jobid, lfnhanger, os.path.splitext(of)[1])
                 outfile.type = 'output'
             outfile.destinationDBlock = pandajob.destinationDBlock
             outfile.destinationSE = task['tm_asyncdest']
@@ -139,7 +150,12 @@ class PanDAInjection(PanDAAction):
         pandajob.jobParameters    += '--inputFile=\'%s\' ' % json.dumps(infiles)
         pandajob.jobParameters    += '--lumiMask=\'%s\' ' % json.dumps(job['mask']['runAndLumis'])
         pandajob.jobParameters    += '-o "%s" ' % str(outjobpar)
-        #job.jobParameters    += '%s ' % str(wfid) #TODO Is it necessary? Why has it been removed?
+        pandajob.jobParameters    += '--dbs_url=%s ' % task['tm_dbs_url']
+        pandajob.jobParameters    += '--publish_dbs_url=%s ' % task['tm_publish_dbs_url']
+        pandajob.jobParameters    += '%s ' % task['tm_taskname'] #Needed by ASO
+
+        if 'panda_oldjobid' in job and job['panda_oldjobid']:
+            pandajob.parentID = job['panda_oldjobid']
 
         pandajob.addFile(outFileSpec(log=True))
         for filetoadd in alloutfiles:
@@ -150,10 +166,19 @@ class PanDAInjection(PanDAAction):
     def execute(self, *args, **kwargs):
         self.logger.info(" create specs and inject into PanDA ")
         results = []
-        jobset = None
+        ## in case the jobset already exists it means the new jobs need to be appended to the existing task
+        ## (a possible case for this is the resubmission)
+        jobset = kwargs['task']['panda_jobset_id'] if kwargs['task']['panda_jobset_id'] else None
         jobdef = None
         startjobid = 0
+
         basejobname = "%s" % commands.getoutput('uuidgen')
+        lfnhanger = ''.join(random.choice(string.ascii_uppercase + string.digits) for x in range(LFNHANGERLEN))
+        ## /<primarydataset>/<yourHyperNewsusername>-<publish_data_name>-<PSETHASH>/USER
+        outdataset = '/%s/%s-%s/USER' %(kwargs['task']['tm_input_dataset'].split('/')[1],
+                                        kwargs['task']['tm_username'],
+                                        kwargs['task']['tm_publish_name'])
+
         for jobgroup in args[0]:
             jobs, site = jobgroup.result
             blocks = [infile['block'] for infile in jobs.jobs[0]['input_files'] if infile['block']]
@@ -164,7 +189,8 @@ class PanDAInjection(PanDAAction):
                     msg = "No site available for submission of task %s" %(kwargs['task'])
                     raise NoAvailableSite(msg)
 
-                jobgroupspecs, startjobid = self.makeSpecs(kwargs['task'], jobs, site, jobset, jobdef, startjobid, basejobname)
+                jobgroupspecs, startjobid = self.makeSpecs(kwargs['task'], outdataset, jobs, site,
+                                                           jobset, jobdef, startjobid, basejobname, lfnhanger)
                 jobsetdef = self.inject(kwargs['task'], jobgroupspecs)
                 outjobset = jobsetdef.keys()[0]
                 outjobdefs = jobsetdef[outjobset]
@@ -181,14 +207,14 @@ class PanDAInjection(PanDAAction):
                     pass
 
                 for jd in outjobdefs:
-                    addJobGroup(kwargs['task']['tm_taskname'], jd, "Submitted", ",".join(blocks), None)
+                    addJobGroup(kwargs['task']['tm_taskname'], jd, "Submitted", ",".join(blocks), None, kwargs['task']['tm_user_dn'])
                 setInjectedTasks(kwargs['task']['tm_taskname'], "Submitted", outjobset)
                 results.append(Result(task=kwargs['task'], result=jobsetdef))
             except Exception, exc:
                 msg = "Problem %s injecting job group from task %s reading data from blocks %s" % (str(exc), kwargs['task'], ",".join(blocks))
                 self.logger.error(msg)
                 self.logger.error(str(traceback.format_exc()))
-                addJobGroup(kwargs['task']['tm_taskname'], None, "Failed", ",".join(blocks), str(exc))
+                addJobGroup(kwargs['task']['tm_taskname'], None, "Failed", ",".join(blocks), str(exc), kwargs['task']['tm_user_dn'])
                 results.append(Result(task=kwargs['task'], warn=msg))
         if not jobset:
             msg = "No task id available for the task. Setting %s at failed." % kwargs['task']

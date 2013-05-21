@@ -1,3 +1,4 @@
+#!/usr/bin/env python
 import time
 import logging
 import os
@@ -66,12 +67,13 @@ class MasterWorker(object):
            and distribuiting it to the slave processes."""
         self.logger.debug("Starting")
         while(True):
-            pendingWork = self.db.getNew(self.slaves.freeSlaves())
+            pendingWork = self.db.getNew(self.slaves.queueableTasks())
             self.logger.info("Retrieved a total of %d works", len(pendingWork))
             self.slaves.injectWorks(pendingWork)
             self.logger.info('Worker status:')
-            self.logger.info(' - busy slaves: %d' % self.slaves.busySlaves())
             self.logger.info(' - free slaves: %d' % self.slaves.freeSlaves())
+            self.logger.info(' - acquired tasks: %d' % self.slaves.queuedTasks())
+            self.logger.info(' - tasks pending in queue: %d' % self.slaves.pendingTasks())
             self.db.updateFinished(self.slaves.checkFinished())
             time.sleep(self.config.TaskWorker.polling)
         self.logger.debug("Stopping")

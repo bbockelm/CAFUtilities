@@ -8,6 +8,7 @@ from WMCore.WMInit import WMInit
 
 from TaskWorker.DataObjects.Result import Result
 from TaskWorker.WorkerExceptions import WorkerHandlerException
+import PandaServerInterface
 
 
 ## Creating configuration globals to avoid passing these around at every request
@@ -80,10 +81,17 @@ class Worker(object):
         WORKER_DBCONFIG = dbconfig
         self.pool = []
         self.nworkers = WORKER_CONFIG.TaskWorker.nslaves if getattr(WORKER_CONFIG.TaskWorker, 'nslaves', None) is not None else multiprocessing.cpu_count()
-        self.inputs  = multiprocessing.Queue()
+        ## limit the size of the queue to be al maximum twice then the number of worker
+        self.leninqueue = self.nworkers*2
+        self.inputs  = multiprocessing.Queue(self.leninqueue)
         self.results = multiprocessing.Queue()
         self.working = {}
- 
+        PandaServerInterface.initProxyParameters(WORKER_CONFIG.MyProxy.serverhostkey,\
+                                                 WORKER_CONFIG.MyProxy.serverhostcert,\
+                                                 WORKER_CONFIG.MyProxy.serverdn,\
+                                                 WORKER_CONFIG.MyProxy.uisource,\
+                                                 WORKER_CONFIG.MyProxy.credpath)
+
     def __del__(self):
         """When deleted shutting down all slaves"""
         self.end()
@@ -162,14 +170,36 @@ class Worker(object):
         """Count how many unemployed slaves are there
 
         :return int: number of free slaves."""
-        return len(self.pool) - self.busySlaves()
+        if self.queuedTasks() >= len(self.pool):
+            return 0
+        return len(self.pool) - self.queuedTasks()
 
-    def busySlaves(self):
+    def queuedTasks(self):
         """Count how many busy slaves are out there
 
         :return int: number of working slaves."""
         return len(self.working)
 
+    def queueableTasks(self):
+        """Depending on the queue size limit
+           return the number of free solts in
+           the working queue.
+
+           :return int: number of acquirable tasks."""
+        if self.queuedTasks() >= self.leninqueue:
+            return 0
+        return self.leninqueue - self.queuedTasks()
+
+    def pendingTasks(self):
+        """Return the number of tasks pending
+           to be processed and already in the
+           queue.
+
+           :return int: number of tasks waiting
+                        in the queue."""
+        if len(self.working) <= len(self.pool):
+            return 0
+        return len(self.working) - len(self.pool)
 
 if __name__ == '__main__':
 

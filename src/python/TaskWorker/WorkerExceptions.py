@@ -26,3 +26,8 @@ class WorkerHandlerException(TaskWorkerException):
     """Generic exception in case slave worker action
        crashes"""
     exitcode = 6666
+
+class StopHandler(TaskWorkerException):
+    """Exception used in order to stop the handler from
+       continuing to work the sequent actions"""
+    exitcode = 6667
