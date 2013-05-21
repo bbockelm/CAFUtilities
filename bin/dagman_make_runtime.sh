@@ -8,7 +8,7 @@ ORIGDIR=$PWD
 STARTDIR=$PWD/tmp/runtime
 
 WMCOREDIR=$STARTDIR/WMCore
-WMCOREVER=0.9.59-dagman3
+WMCOREVER=0.9.70-dagman
 WMCOREREPO=bbockelm
 
 TASKWORKERDIR=$STARTDIR/TaskWorker
@@ -35,23 +35,29 @@ CRABCLIENTDIR=$STARTDIR/CRABClient
 CRABCLIENTVER=3.2.0pre2-dagman
 CRABCLIENTREPO=bbockelm
 
-rm -rf $STARTDIR
-
-mkdir -p $WMCOREDIR
-mkdir -p $TASKWORKERDIR
-mkdir -p $DBSDIR
-mkdir -p $DLSDIR
-mkdir -p $CRABSERVERDIR
-mkdir -p $CRABCLIENTDIR
+rm -rf $WMCOREDIR && mkdir -p $WMCOREDIR
+rm -rf $TASKWORKERDIR && mkdir -p $TASKWORKERDIR
+rm -rf $DBSDIR && mkdir -p $DBSDIR
+rm -rf $DLSDIR && mkdir -p $DLSDIR
+rm -rf $CRABSERVERDIR && mkdir -p $CRABSERVERDIR
+rm -rf $CRABCLIENTDIR && mkdir -p $CRABCLIENTDIR
 
 cp $BASEDIR/gWMS-CMSRunAnaly.sh $STARTDIR || exit 3
 
 pushd $STARTDIR
 
+curl -L http://cmsrep.cern.ch/cmssw/cms/RPMS/slc5_amd64_gcc462/external+py2-pyopenssl+0.11-1-1.slc5_amd64_gcc462.rpm > external+py2-pyopenssl+0.11-1-1.slc5_amd64_gcc462.rpm || exit 2
+rpm2cpio external+py2-pyopenssl+0.11-1-1.slc5_amd64_gcc462.rpm | cpio -uimd || exit 2
 curl -L https://github.com/$CAFUTILITIESREPO/CAFUtilities/archive/$CAFUTILITIESVER.tar.gz | tar zx || exit 2
-curl -L https://github.com/$WMCOREREPO/WMCore/archive/$WMCOREVER.tar.gz | tar zx || exit 2
+if [ ! -e $WMCOREVER.tar.gz ]; then
+curl -L https://github.com/$WMCOREREPO/WMCore/archive/$WMCOREVER.tar.gz > $WMCOREVER.tar.gz || exit 2
+fi
+tar zxf $WMCOREVER.tar.gz || exit 2
 curl -L https://github.com/$TASKWORKERREPO/CAFTaskWorker/archive/$TASKWORKERVER.tar.gz | tar zx || exit 2
-curl -L https://github.com/$DBSREPO/DBS/archive/$DBSVER.tar.gz | tar zx || exit 2
+if [ ! -e $DBSVER.tar.gz ]; then
+  curl -L https://github.com/$DBSREPO/DBS/archive/$DBSVER.tar.gz > $DBSVER.tar.gz || exit 2
+fi
+tar zxf $DBSVER.tar.gz || exit 2
 curl -L https://github.com/$DLSREPO/DLS/archive/$DLSVER.tar.gz | tar zx || exit 2
 curl -L https://github.com/$CRABSERVERREPO/CRABServer/archive/$CRABSERVERVER.tar.gz | tar zx || exit 2
 curl -L https://github.com/$CRABCLIENTREPO/CRABClient/archive/$CRABCLIENTVER.tar.gz | tar zx || exit 2
@@ -59,7 +65,6 @@ curl -L https://httplib2.googlecode.com/files/httplib2-0.8.tar.gz | tar zx || ex
 curl -L http://download.cherrypy.org/cherrypy/3.2.2/CherryPy-3.2.2.tar.gz | tar zx || exit 2
 curl -L https://pypi.python.org/packages/source/S/SQLAlchemy/SQLAlchemy-0.8.0.tar.gz | tar zx || exit 2
 curl -L http://hcc-briantest.unl.edu/CRAB3-condor-libs.tar.gz | tar zx *.so* || exit 2
-curl -L http://cmsrep.cern.ch/cmssw/cms/RPMS/slc5_amd64_gcc462/external+py2-pyopenssl+0.11-1-1.slc5_amd64_gcc462.rpm | rpm2cpio | cpio -uimd || exit 2
 
 pushd WMCore-$WMCOREVER/src/python
 zip -r $STARTDIR/CRAB3.zip WMCore PSetTweaks || exit 3
@@ -70,7 +75,7 @@ zip -r $STARTDIR/CRAB3.zip TaskWorker || exit 3
 popd
 
 pushd CAFUtilities-$CAFUTILITIESVER/src/python
-zip -r $STARTDIR/CRAB3.zip TaskDB || exit 3
+zip -r $STARTDIR/CRAB3.zip transform Databases PandaServerInterface.py || exit 3
 popd
 
 pushd DBS-$DBSVER/Clients/Python
@@ -101,9 +106,11 @@ popd
 
 pushd opt/cmssw/slc5_amd64_gcc462/external/py2-pyopenssl/0.11/lib/python2.6/site-packages
 mv OpenSSL $STARTDIR/lib/python/
+popd
 
 cat > setup.sh << EOF
 export CRAB3_BASEPATH=\`dirname \${BASH_SOURCE[0]}\`
+export CRAB3_BASEPATH=\`readlink -e \$CRAB3_BASEPATH\`
 export PATH=\$CRAB3_BASEPATH:\$PATH
 export PYTHONPATH=\$CRAB3_BASEPATH/CRAB3.zip:\$CRAB3_BASEPATH/lib/python:\$PYTHONPATH
 export LD_LIBRARY_PATH=\$CRAB3_BASEPATH/lib:\$CRAB3_BASEPATH/lib/condor:\$LD_LIBRARY_PATH
