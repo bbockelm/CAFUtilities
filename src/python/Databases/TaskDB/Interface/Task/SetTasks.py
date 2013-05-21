@@ -3,13 +3,13 @@
 _SetTasks_
 """
 import logging
-import TaskDB.Connection as DBConnect
+import Databases.Connection as DBConnect
 
 def setStatusTask(taskName, status):
     """
     _setQueuedTask_
     """
-    factory = DBConnect.getConnection()
+    factory = DBConnect.getConnection(package='Databases.TaskDB')
     tasks = factory(classname = "Task.SetStatusTask")
     try:
         tasks.execute(taskName, status)
@@ -23,7 +23,7 @@ def setJobSetId(taskName, jobSetId):
     """
     _setJobSetId_
     """
-    factory = DBConnect.getConnection()
+    factory = DBConnect.getConnection(package='Databases.TaskDB')
     tasks = factory(classname = "Task.SetJobSetId")
     try:
         tasks.execute(taskName, jobSetId)
@@ -37,7 +37,7 @@ def setStartInjection(taskName):
     """
     _setStartInjection_
     """
-    factory = DBConnect.getConnection()
+    factory = DBConnect.getConnection(package='Databases.TaskDB')
     tasks = factory(classname = "Task.SetStartInjection")
     try:
         tasks.execute(taskName)
@@ -51,7 +51,7 @@ def setEndInjection(taskName):
     """
     _setStartInjection_
     """
-    factory = DBConnect.getConnection()
+    factory = DBConnect.getConnection(package='Databases.TaskDB')
     tasks = factory(classname = "Task.SetEndInjection")
     try:
         tasks.execute(taskName)
@@ -65,7 +65,7 @@ def setReadyTasks(taskName, status):
     """
     _setStartInjection_
     """
-    factory = DBConnect.getConnection()
+    factory = DBConnect.getConnection(package='Databases.TaskDB')
     tasks = factory(classname = "Task.SetReadyTasks")
     try:
         tasks.execute(taskName, status)
@@ -79,7 +79,7 @@ def setInjectedTasks(taskName, status, jobSetId):
     """
     _setStartInjection_
     """
-    factory = DBConnect.getConnection()
+    factory = DBConnect.getConnection(package='Databases.TaskDB')
     tasks = factory(classname = "Task.SetInjectedTasks")
     try:
         tasks.execute(taskName, status, jobSetId)
@@ -93,7 +93,7 @@ def setFailedTasks(taskName, status, failure_reason):
     """
     _setStartInjection_
     """
-    factory = DBConnect.getConnection()
+    factory = DBConnect.getConnection(package='Databases.TaskDB')
     tasks = factory(classname = "Task.SetFailedTasks")
     try:
         tasks.execute(taskName, status, failure_reason)

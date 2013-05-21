@@ -1,6 +1,6 @@
 #!/usr/bin/env python
 """
-_TaskManager.TaskDB.Oracle_
+_Databases.TaskDB.Oracle_
 
 Oracle Compatibility layer for Task Manager DB
 """
@@ -53,7 +53,7 @@ class Create(DBCreator):
         tm_user_vo VARCHAR(255) NOT NULL,
         tm_user_role VARCHAR(255),
         tm_user_group VARCHAR(255),
-        tm_publish_name VARCHAR(255),
+        tm_publish_name VARCHAR(1000),
         tm_asyncdest VARCHAR(255) NOT NULL,
         tm_dbs_url VARCHAR(255) NOT NULL,
         tm_publish_dbs_url VARCHAR(255),
@@ -62,7 +62,7 @@ class Create(DBCreator):
         tm_edm_outfiles VARCHAR(255),
         tm_transformation VARCHAR(255) NOT NULL,
         tm_arguments CLOB,
-        PRIMARY KEY(tm_taskname)
+        CONSTRAINT taskname_pk PRIMARY KEY(tm_taskname)
         )
         """
         self.create['c_jobgroups'] = """
@@ -73,11 +73,12 @@ class Create(DBCreator):
         panda_jobdef_status VARCHAR(255) NOT NULL,
         tm_data_blocks CLOB,
         panda_jobgroup_failure CLOB,
-        UNIQUE(panda_jobdef_id),
-        FOREIGN KEY(tm_taskname) references
+        tm_user_dn VARCHAR(255) NOT NULL,
+        CONSTRAINT task_user_un UNIQUE(panda_jobdef_id, tm_user_dn),
+        CONSTRAINT taskname_fk FOREIGN KEY(tm_taskname) references
             tasks(tm_taskname)
             ON DELETE CASCADE,
-        PRIMARY KEY(tm_jobgroups_id)
+        CONSTRAINT jobgroup_id_pk PRIMARY KEY(tm_jobgroups_id)
         )
         """
         self.create['c_jobgroups_id_seq'] = """

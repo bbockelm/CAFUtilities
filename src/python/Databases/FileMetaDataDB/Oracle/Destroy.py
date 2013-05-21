@@ -6,7 +6,7 @@ import threading
 import string
 
 from WMCore.Database.DBCreator import DBCreator
-from TaskDB.Oracle.Create import Create
+from Databases.FileMetaDataDB.Oracle.Create import Create
 
 class Destroy(DBCreator):
     def __init__(self, logger = None, dbi = None, param=None):
@@ -30,10 +30,5 @@ class Destroy(DBCreator):
         for tableName in orderedTables:
             i += 1
             prefix = string.zfill(i, 2)
-            if tableName.endswith("_seq"):
-                 self.create[prefix + tableName] = "DROP SEQUENCE %s" % tableName
-            elif tableName.endswith("_trg"):
-                self.create[prefix + tableName] = "DROP TRIGGER %s" % tableName
-            else:
-                self.create[prefix + tableName] = "DROP TABLE %s" % tableName
+            self.create[prefix + tableName] = "DROP TABLE %s" % tableName
 

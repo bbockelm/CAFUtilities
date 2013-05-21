@@ -3,13 +3,13 @@
 _GetTasks_
 """
 import logging
-import TaskDB.Connection as DBConnect
+import Databases.Connection as DBConnect
 
 def getNewResubmitTasks():
     """
     _getNewResubmitTasks_
     """
-    factory = DBConnect.getConnection()
+    factory = DBConnect.getConnection(package='Databases.TaskDB')
     tasks = factory(classname = "Task.GetNewResubmit")
     try:
         taskList = tasks.execute()
@@ -23,7 +23,7 @@ def getKillTasks():
     """
     _getKillTasks_
     """
-    factory = DBConnect.getConnection()
+    factory = DBConnect.getConnection(package='Databases.TaskDB')
     tasks = factory(classname = "Task.GetKillTasks")
     try:
         taskList = tasks.execute()
@@ -37,7 +37,7 @@ def getReadyTasks(limit = 0):
     """
     _getKillTasks_
     """
-    factory = DBConnect.getConnection()
+    factory = DBConnect.getConnection(package='Databases.TaskDB')
     tasks = factory(classname = "Task.GetReadyTasks")
     try:
         taskList = tasks.execute(limit)
@@ -51,7 +51,7 @@ def getInjectedTasks():
     """
     _getKillTasks_
     """
-    factory = DBConnect.getConnection()
+    factory = DBConnect.getConnection(package='Databases.TaskDB')
     tasks = factory(classname = "Task.GetInjectedTasks")
     try:
         taskList = tasks.execute()
@@ -65,7 +65,7 @@ def getFailedTasks():
     """
     _getKillTasks_
     """
-    factory = DBConnect.getConnection()
+    factory = DBConnect.getConnection(package='Databases.TaskDB')
     tasks = factory(classname = "Task.GetFailedTasks")
     try:
         taskList = tasks.execute()

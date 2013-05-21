@@ -3,13 +3,13 @@
 _GetJobGroups_
 """
 import logging
-import TaskDB.Connection as DBConnect
+import Databases.Connection as DBConnect
 
 def getFailedGroups():
     """
     _getFailedGroups_
     """
-    factory = DBConnect.getConnection()
+    factory = DBConnect.getConnection(package='Databases.TaskDB')
     failedJobGroup = factory(classname = "JobGroup.GetFailedJobGroup")
     try:
         failed_jobgroup = failedJobGroup.execute()
