@@ -27,11 +27,12 @@ begin
 end;
 /
 /* adding new column to jobgroup */
-ALTER TABLE JOBGROUPS ADD (tm_user_dn VARCHAR(255) NOT NULL);
+ALTER TABLE JOBGROUPS ADD (tm_user_dn VARCHAR(255));
 COMMIT;
 
 /* populate the new column */
 UPDATE JOBGROUPS jg SET tm_user_dn = (SELECT tm_user_dn FROM TASKS t WHERE t.tm_taskname = jg.tm_taskname);
+ALTER TABLE JOBGROUPS MODIFY (tm_user_dn NOT NULL);
 
 /* adding new correct constraint to jobgroup */
 ALTER TABLE JOBGROUPS ADD constraint task_user_un UNIQUE(tm_taskname, tm_user_dn);
