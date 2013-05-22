@@ -3,13 +3,13 @@
 _SetTasks_
 """
 import logging
-import TaskDB.Connection as DBConnect
+import Databases.Connection as DBConnect
 
 def setStatus(tm_jobgroups_id, status):
     """
     _setQueuedTask_
     """
-    factory = DBConnect.getConnection()
+    factory = DBConnect.getConnection(package="Databases.TaskDB")
     statusJobGroup = factory(classname = "JobGroup.SetStatusJobGroup")
     try:
         statusJobGroup.execute(tm_jobgroups_id, status)
