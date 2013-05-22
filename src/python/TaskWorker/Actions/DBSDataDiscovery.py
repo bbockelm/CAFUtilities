@@ -48,4 +48,5 @@ if __name__ == '__main__':
     config.Services.DBSUrl = 'http://cmsdbsprod.cern.ch/cms_dbs_prod_global/servlet/DBSServlet'
     for dataset in datasets:
         fileset = DBSDataDiscovery(config)
-        print fileset.execute(task={'tm_input_dataset':dataset, 'tm_taskname':'pippo1'})
+        print fileset.execute(task={'tm_input_dataset':dataset, 'tm_taskname':'pippo1', 'tm_dbs_url': config.Services.DBSUrl})
+

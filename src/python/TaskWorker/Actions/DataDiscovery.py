@@ -41,7 +41,7 @@ class DataDiscovery(TaskAction):
                         self.logger.error("Impossible translating %s to a CMS name through SiteDB" %se)
                         secmsmap[se] = ''
                 if se in secmsmap:
-                    wmfile['locations'].append(secmsmap[se])
+                    wmfile['locations'].extend(secmsmap[se])
             wmfile['workflow'] = requestname
             evecounter += infos['NumberOfEvents']
             for run, lumis in infos['Lumis'].iteritems():
