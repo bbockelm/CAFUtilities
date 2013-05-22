@@ -5,6 +5,13 @@ UPDATE tasks SET tmp_tm_split_args=tm_split_args;
 COMMIT;
 ALTER TABLE tasks DROP COLUMN tm_split_args;
 ALTER TABLE tasks RENAME COLUMN tmp_tm_split_args TO tm_split_args;
+ALTER TABLE tasks MODIFY (tm_split_args NOT NULL);
+
+ALTER TABLE tasks ADD (tmp_tm_arguments  CLOB);
+UPDATE tasks SET tmp_tm_arguments=tm_arguments;
+COMMIT;
+ALTER TABLE tasks DROP COLUMN tm_arguments;
+ALTER TABLE tasks RENAME COLUMN tmp_tm_arguments TO tm_arguments;
 
 /* removing unused tm_data_runs column */
 ALTER TABLE tasks drop column tm_data_runs;
@@ -19,9 +26,9 @@ declare
   constr VARCHAR2(1000);
 begin
   select constraint_name into constr from all_constraints
-      where owner = 'CRAB_MCINQUIL' and
-            constraint_type = 'U' and
-            table_name = 'JOBGROUPS';
+      where constraint_type = 'U' and
+            table_name = 'JOBGROUPS' and
+            status = 'ENABLED';
   code := REPLACE(code, '|ConstraintName|', constr);
   EXECUTE IMMEDIATE code;
 end;
