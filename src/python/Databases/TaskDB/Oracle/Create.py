@@ -74,7 +74,6 @@ class Create(DBCreator):
         tm_data_blocks CLOB,
         panda_jobgroup_failure CLOB,
         tm_user_dn VARCHAR(255) NOT NULL,
-        CONSTRAINT task_user_un UNIQUE(panda_jobdef_id, tm_user_dn),
         CONSTRAINT taskname_fk FOREIGN KEY(tm_taskname) references
             tasks(tm_taskname)
             ON DELETE CASCADE,
