@@ -35,6 +35,7 @@ class Create(DBCreator):
               fmd_global_tag VARCHAR(255) DEFAULT NULL,
               fmd_publish_name VARCHAR(255) NOT NULL,
               fmd_location VARCHAR(255) NOT NULL,
+              fmd_tmp_location VARCHAR(255) NOT NULL,
               fmd_runlumi CLOB,
               fmd_adler32 VARCHAR(10) DEFAULT NULL,
               fmd_cksum NUMBER(11) DEFAULT NULL,
