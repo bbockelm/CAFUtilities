@@ -44,6 +44,7 @@ class Create(DBCreator):
               fmd_size NUMBER(11) NOT NULL,
               fmd_type VARCHAR(50) NOT NULL,
               fmd_parent CLOB,
+              fmd_creation_time TIMESTAMP NOT NULL,
               CONSTRAINT pk_tasklfn PRIMARY KEY(tm_taskname, fmd_lfn)
             )
         """
