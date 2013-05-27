@@ -34,6 +34,12 @@ serverDN = None
 uiSource = None
 credServerPath = '/tmp'
 
+class PanDAException(Exception):
+    """
+    Specific errors coming from interaction with PanDa
+    """
+    exitcode = 3100
+
 def initProxyParameters(serverkey, servercert, serverdn, uisource, credpath):
     global serverCert, serverKey, serverDN, uiSource, credServerPath
     serverCert, serverKey, serverDN, uiSource, credServerPath = servercert, serverkey, serverdn, uisource, credpath
@@ -87,7 +93,7 @@ def _x509():
         return x509
     # no valid proxy certificate
     # FIXME
-    raise PanDaException("No valid grid proxy certificate found")
+    raise PanDAException("No valid grid proxy certificate found")
 
 # look for a CA certificate directory
 def _x509_CApath():
@@ -541,7 +547,7 @@ def putFile(file,verbose=False,useCacheSrv=False,reuseSandbox=False):
             errStr += 'Your working directory contains too large files which cannot be put on cache area. '
             errStr += 'Please submit job without --noBuild/--libDS so that your files will be uploaded to SE'
             # get logger
-            raise PanDaException(errStr)
+            raise PanDAException(errStr)
     # instantiate curl
     curl = _Curl()
     curl.sslCert = _x509()
@@ -560,7 +566,7 @@ def putFile(file,verbose=False,useCacheSrv=False,reuseSandbox=False):
         data = {'fileSize':fileSize,'checkSum':checkSum}
         status,output = curl.post(url,data)
         if status != 0:
-            raise PanDaException('ERROR: Could not check Sandbox duplication with %s' % status)
+            raise PanDAException('ERROR: Could not check Sandbox duplication with %s' % status)
         elif output.startswith('FOUND:'):
             # found reusable sandbox
             hostName,reuseFileName = output.split(':')[1:]
@@ -581,7 +587,7 @@ def putFile(file,verbose=False,useCacheSrv=False,reuseSandbox=False):
     filename = ""
     servername = ""
     if status !=0:
-        raise PanDaException("Failure uploading input file into PanDa")
+        raise PanDAException("Failure uploading input file into PanDa")
     else:
        matchURL = re.search("(http.*://[^/]+)/", baseURLCSRVSSL)
        return 0, "True:%s:%s" % (matchURL.group(1), file.split('/')[-1])
