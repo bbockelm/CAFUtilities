@@ -442,16 +442,12 @@ def runBrokerage(user, vo, group, role, sites,
         return EC_Failed,None
 
 
-
-#####################################################################################
-#The following two functions, getPandIDsWithJobID and killJobs, are used bye the REST
-#They do not retrieve the proxy certificate of the user with myproxy, but just use
-#what is has bee provided in the X509_USER_PROXY variable by the caller
-#####################################################################################
-
+####################################################################################
+# Only the following function -getPandIDsWithJobID- is directly called by the REST #
+####################################################################################
 # get PandaIDs for a JobID
 #TODO check if we can remove user, vo, group, role,
-def getPandIDsWithJobID(jobID,user,vo,group,role,dn=None,nJobs=0,verbose=False,userproxy=None,credpath=None):
+def getPandIDsWithJobID(jobID, user, vo, group, role, dn=None, nJobs=0, verbose=False, userproxy=None, credpath=None):
     # instantiate curl
     curl = _Curl()
     curl.verbose = verbose
@@ -465,25 +461,31 @@ def getPandIDsWithJobID(jobID,user,vo,group,role,dn=None,nJobs=0,verbose=False,u
     filehandler, proxyfile = tempfile.mkstemp(dir=credpath)
     with open(proxyfile, 'w') as pf:
         pf.write(userproxy)
+    curl.sslCert = proxyfile
+    curl.sslKey  = proxyfile 
 
-    # set it ...
-    curl.sslCert = proxyfile if proxyfile else x509()
-    curl.sslKey  = proxyfile if proxyfile else x509()
-    # call him ...
-    status,output = curl.post(url,data)
-
-    # Always delete it!
-    os.remove(proxyfile)
-
-    if status!=0:
-        LOGGER.debug(output)
-        return status,None
+    status = None
+    output = None
     try:
-        return status,pickle.loads(output)
+        # call him ...
+        status, output = curl.post(url, data)
     except:
         type, value, traceBack = sys.exc_info()
-        LOGGER.error("ERROR getPandIDsWithJobID : %s %s" % (type,value))
-        return EC_Failed,None
+        LOGGER.error("ERROR getPandIDsWithJobID : %s %s" % (type, value))
+    finally:
+        # Always delete it!
+        os.remove(proxyfile)
+
+    if status is not None and status!=0:
+        LOGGER.debug(str(output))
+        return status, None
+    try:
+        return status, pickle.loads(output)
+    except:
+        type, value, traceBack = sys.exc_info()
+        LOGGER.error("ERROR getPandIDsWithJobID : %s %s" % (type, value))
+        return EC_Failed, None
+
 
 # kill jobs
 #TODO check if we can remove user, vo, group, role,
