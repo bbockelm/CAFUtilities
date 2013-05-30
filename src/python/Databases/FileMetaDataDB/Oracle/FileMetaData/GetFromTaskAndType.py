@@ -1,8 +1,4 @@
 #!/usr/bin/env python
-"""
-_Task.New_
-Action to insert a new task into TaskDB
-"""
 from WMCore.Database.DBFormatter import DBFormatter
 
 class GetFromTaskAndType(DBFormatter):
