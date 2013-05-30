@@ -34,6 +34,12 @@ serverDN = None
 uiSource = None
 credServerPath = '/tmp'
 
+class PanDAException(Exception):
+    """
+    Specific errors coming from interaction with PanDa
+    """
+    exitcode = 3100
+
 def initProxyParameters(serverkey, servercert, serverdn, uisource, credpath):
     global serverCert, serverKey, serverDN, uiSource, credServerPath
     serverCert, serverKey, serverDN, uiSource, credServerPath = servercert, serverkey, serverdn, uisource, credpath
@@ -87,7 +93,7 @@ def _x509():
         return x509
     # no valid proxy certificate
     # FIXME
-    raise PanDaException("No valid grid proxy certificate found")
+    raise PanDAException("No valid grid proxy certificate found")
 
 # look for a CA certificate directory
 def _x509_CApath():
@@ -442,16 +448,12 @@ def runBrokerage(user, vo, group, role, sites,
         return EC_Failed,None
 
 
-
-#####################################################################################
-#The following two functions, getPandIDsWithJobID and killJobs, are used bye the REST
-#They do not retrieve the proxy certificate of the user with myproxy, but just use
-#what is has bee provided in the X509_USER_PROXY variable by the caller
-#####################################################################################
-
+####################################################################################
+# Only the following function -getPandIDsWithJobID- is directly called by the REST #
+####################################################################################
 # get PandaIDs for a JobID
 #TODO check if we can remove user, vo, group, role,
-def getPandIDsWithJobID(jobID,user,vo,group,role,dn=None,nJobs=0,verbose=False,userproxy=None,credpath=None):
+def getPandIDsWithJobID(jobID, user, vo, group, role, dn=None, nJobs=0, verbose=False, userproxy=None, credpath=None):
     # instantiate curl
     curl = _Curl()
     curl.verbose = verbose
@@ -465,25 +467,31 @@ def getPandIDsWithJobID(jobID,user,vo,group,role,dn=None,nJobs=0,verbose=False,u
     filehandler, proxyfile = tempfile.mkstemp(dir=credpath)
     with open(proxyfile, 'w') as pf:
         pf.write(userproxy)
+    curl.sslCert = proxyfile
+    curl.sslKey  = proxyfile 
 
-    # set it ...
-    curl.sslCert = proxyfile if proxyfile else x509()
-    curl.sslKey  = proxyfile if proxyfile else x509()
-    # call him ...
-    status,output = curl.post(url,data)
-
-    # Always delete it!
-    os.remove(proxyfile)
-
-    if status!=0:
-        LOGGER.debug(output)
-        return status,None
+    status = None
+    output = None
     try:
-        return status,pickle.loads(output)
+        # call him ...
+        status, output = curl.post(url, data)
     except:
         type, value, traceBack = sys.exc_info()
-        LOGGER.error("ERROR getPandIDsWithJobID : %s %s" % (type,value))
-        return EC_Failed,None
+        LOGGER.error("ERROR getPandIDsWithJobID : %s %s" % (type, value))
+    finally:
+        # Always delete it!
+        os.remove(proxyfile)
+
+    if status is not None and status!=0:
+        LOGGER.debug(str(output))
+        return status, None
+    try:
+        return status, pickle.loads(output)
+    except:
+        type, value, traceBack = sys.exc_info()
+        LOGGER.error("ERROR getPandIDsWithJobID : %s %s" % (type, value))
+        return EC_Failed, None
+
 
 # kill jobs
 #TODO check if we can remove user, vo, group, role,
@@ -539,7 +547,7 @@ def putFile(file,verbose=False,useCacheSrv=False,reuseSandbox=False):
             errStr += 'Your working directory contains too large files which cannot be put on cache area. '
             errStr += 'Please submit job without --noBuild/--libDS so that your files will be uploaded to SE'
             # get logger
-            raise PanDaException(errStr)
+            raise PanDAException(errStr)
     # instantiate curl
     curl = _Curl()
     curl.sslCert = _x509()
@@ -558,7 +566,7 @@ def putFile(file,verbose=False,useCacheSrv=False,reuseSandbox=False):
         data = {'fileSize':fileSize,'checkSum':checkSum}
         status,output = curl.post(url,data)
         if status != 0:
-            raise PanDaException('ERROR: Could not check Sandbox duplication with %s' % status)
+            raise PanDAException('ERROR: Could not check Sandbox duplication with %s' % status)
         elif output.startswith('FOUND:'):
             # found reusable sandbox
             hostName,reuseFileName = output.split(':')[1:]
@@ -579,7 +587,7 @@ def putFile(file,verbose=False,useCacheSrv=False,reuseSandbox=False):
     filename = ""
     servername = ""
     if status !=0:
-        raise PanDaException("Failure uploading input file into PanDa")
+        raise PanDAException("Failure uploading input file into PanDa")
     else:
        matchURL = re.search("(http.*://[^/]+)/", baseURLCSRVSSL)
        return 0, "True:%s:%s" % (matchURL.group(1), file.split('/')[-1])
