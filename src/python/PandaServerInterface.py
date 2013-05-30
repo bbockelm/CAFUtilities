@@ -14,6 +14,7 @@ import socket
 import tempfile
 import logging
 from hashlib import sha1
+from TaskWorker.WorkerExceptions import PanDAException
 
 LOGGER = logging.getLogger(__name__)
 
