@@ -276,9 +276,11 @@ class _Curl:
 
 
 # get site specs
-def getSiteSpecs(siteType=None):
+def getSiteSpecs(sslCert, sslKey, siteType=None):
     # instantiate curl
     curl = _Curl()
+    curl.sslCert = sslCert
+    curl.sslKey = sslKey
     # execute
     url = baseURL + '/getSiteSpecs'
     data = {}
@@ -295,9 +297,11 @@ def getSiteSpecs(siteType=None):
 
 
 # get cloud specs
-def getCloudSpecs():
+def getCloudSpecs(sslCert, sslKey):
     # instantiate curl
     curl = _Curl()
+    curl.sslCert = sslCert
+    curl.sslKey = sslKey
     # execute
     url = baseURL + '/getCloudSpecs'
     status,output = curl.get(url,{})
@@ -310,17 +314,19 @@ def getCloudSpecs():
         return EC_Failed,output+'\n'+errStr
 
 # refresh specs
-def refreshSpecs():
-
+def refreshSpecs(user, vo, group, role):
     global PandaSites
     global PandaClouds
+
+    sslCert = userCertFile(user, vo, group, role)
+    sslKey  = userCertFile(user, vo, group, role)
     # get Panda Sites
-    tmpStat,PandaSites = getSiteSpecs()
+    tmpStat,PandaSites = getSiteSpecs(sslCert, sslKey)
     if tmpStat != 0:
         LOGGER.error("ERROR : cannot get Panda Sites")
         sys.exit(EC_Failed)
     # get cloud info
-    tmpStat,PandaClouds = getCloudSpecs()
+    tmpStat,PandaClouds = getCloudSpecs(sslCert, sslKey)
     if tmpStat != 0:
         LOGGER.error("ERROR : cannot get Panda Clouds")
         sys.exit(EC_Failed)
