@@ -13,18 +13,18 @@ class New(DBFormatter):
             tm_job_arch, tm_input_dataset, tm_site_whitelist, tm_site_blacklist, \
             tm_split_algo, tm_split_args, tm_user_sandbox, tm_cache_url, tm_username, tm_user_dn, \
             tm_user_vo, tm_user_role, tm_user_group, tm_publish_name, tm_asyncdest, tm_dbs_url, tm_publish_dbs_url, \
-            tm_outfiles, tm_tfile_outfiles, tm_edm_outfiles, tm_transformation, tm_arguments)"
+            tm_publication, tm_outfiles, tm_tfile_outfiles, tm_edm_outfiles, tm_transformation, tm_job_type, tm_arguments)"
     sql += " VALUES (:task_name, :jobset_id, upper(:task_status), :start_time, :task_failure, :job_sw, \
             :job_arch, :input_dataset, :site_whitelist, :site_blacklist, :split_algo, :split_args, :user_sandbox, \
             :cache_url, :username, :user_dn, \
             :user_vo, :user_role, :user_group, :publish_name, :asyncdest, :dbs_url, :publish_dbs_url, \
-            :outfiles, :tfile_outfiles, :edm_outfiles, :transformation, :arguments)"
+            :publication, :outfiles, :tfile_outfiles, :edm_outfiles, :transformation, :job_type, :arguments)"
     time_sql = "select SYS_EXTRACT_UTC(SYSTIMESTAMP) from dual"
 
     def execute(self, taskName, jobsetId, taskStatus, taskFailure, jobSw, jobArch, inputDataset, \
                 siteWhitelist, siteBlacklist, splitAlgo, splitArgs, userSandbox, cacheUrl, username, userDn, \
-                userVo, userRole, userGroup, publishName, asyncDest, dbsUrl, publishDbsUrl, outFiles, tfileOutfiles, \
-                edmOutfiles, transformation, arguments, \
+                userVo, userRole, userGroup, publishName, asyncDest, dbsUrl, publishDbsUrl, publication, outFiles, tfileOutfiles, \
+                edmOutfiles, transformation, jobtype, arguments, \
                 conn = None, transaction = False):
         """
         """
@@ -35,9 +35,9 @@ class New(DBFormatter):
                  "site_blacklist": siteBlacklist, "split_algo": splitAlgo, "split_args": splitArgs, "user_sandbox": userSandbox, \
                  "cache_url": cacheUrl, "username": username, "user_dn": userDn, \
                  "user_vo": userVo, "user_role": userRole, "user_group": userGroup, "publish_name": publishName, \
-                 "asyncdest": asyncDest, "dbs_url": dbsUrl, "publish_dbs_url": publishDbsUrl, \
+                 "asyncdest": asyncDest, "dbs_url": dbsUrl, "publish_dbs_url": publishDbsUrl, "publication": publication, \
                  "outfiles": outFiles, "tfile_outfiles": tfileOutfiles, "edm_outfiles": edmOutfiles, \
-                 "transformation": transformation, "arguments": arguments}
+                 "transformation": transformation, "job_type": jobtype, "arguments": arguments}
 
         result = self.dbi.processData(self.sql, binds,
                          conn = conn, transaction = transaction)
