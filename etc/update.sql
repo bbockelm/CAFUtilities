@@ -17,3 +17,14 @@ ALTER TABLE tasks MODIFY tm_input_dataset VARCHAR(500);
 ALTER TABLE tasks MODIFY tm_site_whitelist VARCHAR(4000);
 ALTER TABLE tasks MODIFY tm_site_blacklist VARCHAR(4000);
 ALTER TABLE tasks MODIFY tm_publish_name VARCHAR(500);
+
+--Add fields tm_job_type, tm_publication + constraint. Add CAF-252
+ALTER TABLE TASKS ADD (tm_job_type VARCHAR(255));
+UPDATE TASKS SET tm_job_type = 'Analysis';
+ALTER TABLE TASKS MODIFY (tm_job_type NOT NULL);
+
+ALTER TABLE TASKS ADD (tm_publication VARCHAR(1));
+UPDATE TASKS SET tm_publication = 'F';
+ALTER TABLE TASKS MODIFY (tm_publication NOT NULL);
+
+ALTER TABLE TASKS ADD CONSTRAINT check_tm_publication CHECK (tm_publication in ('T' , 'F'));
