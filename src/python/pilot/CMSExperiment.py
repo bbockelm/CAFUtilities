@@ -25,6 +25,27 @@ import shlex
 import getopt
 from glob import glob
 
+from optparse import (OptionParser,BadOptionError)
+
+class PassThroughOptionParser(OptionParser):
+    """
+    An unknown option pass-through implementation of OptionParser.
+
+    When unknown arguments are encountered, bundle with largs and try again,
+    until rargs is depleted.  
+
+    sys.exit(status) will still be called if a known argument is passed
+    incorrectly (e.g. missing arguments or bad argument types, etc.)        
+    """
+    def _process_args(self, largs, rargs, values):
+        while rargs:
+            try:
+                OptionParser._process_args(self,largs,rargs,values)
+            except (BadOptionError, Exception), e:
+                #largs.append(e.opt_str)
+                continue
+
+
 class CMSExperiment(Experiment):
 
     # private data members
@@ -80,23 +101,18 @@ class CMSExperiment(Experiment):
         tolog("Using %s" % (pybin))
         return ec, pilotErrorDiag, pybin
 
-    def extractJobPar(self, job, par):
+    def extractJobPar(self, job, par, ptype="string"):
+        """ return parameter value extracted from jobPars """
 
         strpars = job.jobPars
-        try:
-            cmdopt = shlex.split(strpars)
-            opts, args = getopt.getopt(cmdopt, "a:o:",
-                               ["sourceURL=","jobNumber=","inputFile=","lumiMask=","runAndLumis=","dbs_url=","publish_dbs_url=","cmsswVersion=","scramArch="])
+        cmdopt = shlex.split(strpars)
+        parser = PassThroughOptionParser()
+        parser.add_option(par,\
+                          dest='par',\
+                          type=ptype)
+        (options,args) = parser.parse_args(cmdopt)
+        return options.par
 
-            for o, a in opts:
-                if o == par:
-                    tolog("Found option %s = %s" % (par, a))
-                    return a
-            tolog("Option %s not found " % par)
-            return ""
-        except Exception, e:
-            tolog("Failed to parse option command in job.jobPars = %s -- cause: %s" % (strpars, e))
-            return ""
 
 
     def getCMSAnalysisRunCommand(self, job, jobSite, trfName):
@@ -113,9 +129,9 @@ class CMSExperiment(Experiment):
 
         # extract the setup file from copysetup (and verify that it exists)
         _copysetup = self.getSetupFromCopysetup(copysetup)
-        tolog("Mancinellidebug: copysetup = %s" % _copysetup)
+        tolog("copysetup = %s" % _copysetup)
         if _copysetup != "" and os.path.exists(_copysetup):
-            run_command = 'source %s;' % (_copysetup)
+            run_command = 'source %s; ' % (_copysetup)
 
         # add the user proxy
         if os.environ.has_key('X509_USER_PROXY'):
@@ -123,22 +139,45 @@ class CMSExperiment(Experiment):
         else:
             tolog("Could not add user proxy to the run command (proxy does not exist)")
 
-        params = ["-a", "-o", "--sourceURL", "--jobNumber", "--cmsswVersion", "--scramArch", "--inputFile", "--runAndLumis"]
-        val = {}
-        for p in params:
-            val[p] = self.extractJobPar(job, p)
+        strpars = job.jobPars
+        cmdopt = shlex.split(strpars)
+        parser = PassThroughOptionParser()
+        parser.add_option('-a',\
+                          dest='a',\
+                          type='string')
+        parser.add_option('-o',\
+                          dest='o',\
+                          type='string')
+        parser.add_option('--inputFile',\
+                          dest='inputFile',\
+                          type='string')
+        parser.add_option('--sourceURL',\
+                          dest='sourceURL',\
+                          type='string')
+        parser.add_option('--jobNumber',\
+                          dest='jobNumber',\
+                          type='string')
+        parser.add_option('--cmsswVersion',\
+                          dest='cmsswVersion',\
+                          type='string')
+        parser.add_option('--scramArch',\
+                          dest='scramArch',\
+                          type='string')
+        parser.add_option('--runAndLumis',\
+                          dest='runAndLumis',\
+                          type='string')
+        (options,args) = parser.parse_args(cmdopt)
 
-        paramsstring  = '-a %s '                % val["-a"]
-        paramsstring += '--sourceURL %s '       % val["--sourceURL"]
-        paramsstring += '--jobNumber=%s '       % val["--jobNumber"]
-        paramsstring += '--cmsswVersion=%s '    % val["--cmsswVersion"]
-        paramsstring += '--scramArch=%s '       % val["--scramArch"]
-        paramsstring += "--inputFile='%s' "     % val["--inputFile"]
-        paramsstring += " --runAndLumis='%s' "  % val["--runAndLumis"]
-        paramsstring += '-o "%s" '              % val["-o"]
+        paramsstring  = '-a %s '                % options.a
+        paramsstring += '--sourceURL %s '       % options.sourceURL
+        paramsstring += '--jobNumber=%s '       % options.jobNumber
+        paramsstring += '--cmsswVersion=%s '    % options.cmsswVersion
+        paramsstring += '--scramArch=%s '       % options.scramArch
+        paramsstring += "--inputFile='%s' "     % options.inputFile
+        paramsstring += "--runAndLumis='%s' "   % options.runAndLumis
+        paramsstring += '-o "%s" '              % options.o
 
-        tolog("Mancinellidebug paramsstring = %s" % paramsstring)
-        # set up analysis trf
+        tolog("paramsstring = %s" % paramsstring)
         run_command += './%s %s' % (trfName, paramsstring)
 
         return ec, pilotErrorDiag, run_command
@@ -216,8 +255,8 @@ class CMSExperiment(Experiment):
             the command to export the SCRAMARCH env variable with the correct value """
 
         scramArch = self.extractJobPar(job, '--scramArch')
-        if scramArch != "":
-            return "export SCRAM_ARCH=%s;" % scramArch
+        if scramArch != None:
+            return "export SCRAM_ARCH=%s; " % scramArch
         return ""
 
 
@@ -388,7 +427,6 @@ class CMSExperiment(Experiment):
         dir_list = [#"AtlasProduction*",
                     "*.py",
                     "*.pyc",
-                    # Mancinelli
                     "pandaJobData.out",
                     "Pilot_VmPeak.txt",
                     "pandatracerlog.txt",
@@ -419,7 +457,6 @@ class CMSExperiment(Experiment):
             if not rc:
                 tolog("IGNORE: Failed to remove redundant file(s): %s" % (files))
 
-        tolog("Mancinellidebug: content of workdir = %s" % os.listdir(workdir))
 
 
 
