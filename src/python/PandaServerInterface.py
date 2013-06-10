@@ -27,12 +27,9 @@ baseURLCSRVSSL = "https://voatlas294.cern.ch:25443/server/panda"
 EC_Failed = 255
 
 globalTmpDir = ''
+#PandaSites = {}
+#PandaClouds = {}
 
-serverCert = None
-serverKey = None
-serverDN = None
-uiSource = None
-credServerPath = '/tmp'
 
 class PanDAException(Exception):
     """
@@ -40,45 +37,6 @@ class PanDAException(Exception):
     """
     exitcode = 3100
 
-def initProxyParameters(serverkey, servercert, serverdn, uisource, credpath):
-    global serverCert, serverKey, serverDN, uiSource, credServerPath
-    serverCert, serverKey, serverDN, uiSource, credServerPath = servercert, serverkey, serverdn, uisource, credpath
-
-def retrieveUserProxy(user, vo, group, role):
-    from WMCore.Credential.Proxy import Proxy
-    myproxyserver = "myproxy.cern.ch"
-    defaultDelegation = { 'vo': vo,
-                          'logger': LOGGER,
-                          'myProxySvr': 'myproxy.cern.ch',
-                          'proxyValidity' : '192:00',
-                          'min_time_left' : 36000,
-                          'userDN' : user,
-                          'group' : group if group else '',
-                          'role' : role if role else '',
-                          'server_key': serverKey,
-                          'server_cert': serverCert,
-                          'serverDN': serverDN,
-                          'uisource': uiSource,
-                          'credServerPath': credServerPath,}
-    timeleftthreshold = 60 * 60 * 24
-    proxy = Proxy(defaultDelegation)
-    userproxy = proxy.getProxyFilename(serverRenewer=True)
-    if proxy.getTimeLeft(userproxy) < timeleftthreshold:
-        proxy.logonRenewMyProxy()
-        timeleft = proxy.getTimeLeft(userproxy)
-        if timeleft is None or timeleft <= 0:
-            raise RuntimeError("Impossible to retrieve proxy from %s for %s." %(defaultDelegation['myProxySvr'], defaultDelegation['userDN']))
-
-    LOGGER.debug("User proxy file path: %s" % userproxy)
-    return userproxy
-
-
-def userCertFile(userDN, vo, group, role):
-    userProxy = retrieveUserProxy(userDN, vo, group, role)
-    if os.access(userProxy,os.R_OK):
-        return userProxy
-    LOGGER.error("No valid grid proxy certificate found")
-    LOGGER.debug("Looking for proxy certificate in: %s" % userProxy)
 
 def _x509():
     try:
@@ -94,6 +52,7 @@ def _x509():
     # no valid proxy certificate
     # FIXME
     raise PanDAException("No valid grid proxy certificate found")
+
 
 # look for a CA certificate directory
 def _x509_CApath():
@@ -314,12 +273,12 @@ def getCloudSpecs(sslCert, sslKey):
         return EC_Failed,output+'\n'+errStr
 
 # refresh specs
-def refreshSpecs(user, vo, group, role):
+def refreshSpecs(proxy):
     global PandaSites
     global PandaClouds
 
-    sslCert = userCertFile(user, vo, group, role)
-    sslKey  = userCertFile(user, vo, group, role)
+    sslCert = proxy
+    sslKey  = proxy
     # get Panda Sites
     tmpStat,PandaSites = getSiteSpecs(sslCert, sslKey)
     if tmpStat != 0:
@@ -331,9 +290,12 @@ def refreshSpecs(user, vo, group, role):
         LOGGER.error("ERROR : cannot get Panda Clouds")
         sys.exit(EC_Failed)
 
+def getSite(sitename):
+    global PandaSites
+    return PandaSites[sitename]['cloud']
 
 # submit jobs
-def submitJobs(jobs, user, vo, group, role, workflow, verbose=False):
+def submitJobs(jobs, proxy, verbose=False):
     # set hostname
     hostname = commands.getoutput('hostname')
     for job in jobs:
@@ -342,11 +304,9 @@ def submitJobs(jobs, user, vo, group, role, workflow, verbose=False):
     strJobs = pickle.dumps(jobs)
     # instantiate curl
     curl = _Curl()
-    #curl.sslCert = _x509()
-    #curl.sslKey  = _x509()
-    curl.sslCert = userCertFile(user, vo, group, role)
-    curl.sslKey  = userCertFile(user, vo, group, role)
-    curl.verbose = True #verbose
+    curl.sslCert = proxy
+    curl.sslKey  = proxy
+    curl.verbose = True
     # execute
     url = baseURLSSL + '/submitJobs'
     data = {'jobs':strJobs}
@@ -367,7 +327,7 @@ def submitJobs(jobs, user, vo, group, role, workflow, verbose=False):
 
 
 # run brokerage
-def runBrokerage(user, vo, group, role, sites,
+def runBrokerage(sites, proxy, 
                  atlasRelease=None, cmtConfig=None, verbose=False, trustIS=False, cacheVer='',
                  processingType='', loggingFlag=False, memorySize=0, useDirectIO=False, siteGroup=None,
                  maxCpuCount=-1):
@@ -386,16 +346,16 @@ def runBrokerage(user, vo, group, role, sites,
             return 0,'ERROR : no candidate.'
         else:
             return 0,{'site':'ERROR : no candidate.','logInfo':[]}
+    ## MATTIA comments this code here below
     # choose at most 50 sites randomly to avoid too many lookup
-    random.shuffle(sites)
-    sites = sites[:50]
+    #random.shuffle(sites)
+    #sites = sites[:50]
     # serialize
     strSites = pickle.dumps(sites)
     # instantiate curl
     curl = _Curl()
-    #curl.sslCert = _x509()
-    #curl.sslKey  = _x509()
-    curl.sslKey = curl.sslCert = userCertFile(user, vo, group, role)
+    curl.sslKey = proxy
+    curl.sslCert = proxy
     curl.verbose = verbose
     # execute
     url = baseURLSSL + '/runBrokerage'
@@ -458,8 +418,7 @@ def runBrokerage(user, vo, group, role, sites,
 # Only the following function -getPandIDsWithJobID- is directly called by the REST #
 ####################################################################################
 # get PandaIDs for a JobID
-#TODO check if we can remove user, vo, group, role,
-def getPandIDsWithJobID(jobID, user, vo, group, role, dn=None, nJobs=0, verbose=False, userproxy=None, credpath=None):
+def getPandIDsWithJobID(jobID, dn=None, nJobs=0, verbose=False, userproxy=None, credpath=None):
     # instantiate curl
     curl = _Curl()
     curl.verbose = verbose
@@ -500,8 +459,7 @@ def getPandIDsWithJobID(jobID, user, vo, group, role, dn=None, nJobs=0, verbose=
 
 
 # kill jobs
-#TODO check if we can remove user, vo, group, role,
-def killJobs(user, vo, group, role, ids, code=None, verbose=True, useMailAsID=False):
+def killJobs(ids, proxy, code=None, verbose=True, useMailAsID=False):
     # serialize
     strIDs = pickle.dumps(ids)
     # instantiate curl
@@ -522,13 +480,13 @@ def killJobs(user, vo, group, role, ids, code=None, verbose=True, useMailAsID=Fa
         return EC_Failed,output+'\n'+errStr
 
 # get full job status
-def getFullJobStatus(ids,user,vo,group,role,verbose=False):
+def getFullJobStatus(ids, proxy, verbose=False):
     # serialize
     strIDs = pickle.dumps(ids)
     # instantiate curl
     curl = _Curl()
-    curl.sslCert = userCertFile(user, vo, group, role)
-    curl.sslKey  = userCertFile(user, vo, group, role)
+    curl.sslCert = proxy
+    curl.sslKey  = proxy
     curl.verbose = verbose
     # execute
     url = baseURLSSL + '/getFullJobStatus'
