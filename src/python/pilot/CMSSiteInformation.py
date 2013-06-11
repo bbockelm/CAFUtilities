@@ -93,29 +93,14 @@ class CMSSiteInformation(SiteInformation):
         rangeStart=(rangeStart+1000)
         return False, rangeStart
     
-    """
-    def findRange(self, value, ftype = 'root'):
-        rangeStart = 0
-        while True:
-           a,range = self.belongsTo(value,rangeStart,rangeStart+999)
-           if a:
-               break
-           else:
-               rangeStart = range
-        range = int(range)+1
-        if ftype == 'log': range = '%s/log' % str(range)
-        return str(range)
-    """
  
     def findRange(self, job, filename):
         jobNumber = int(filename.split('_')[-2])
         filesPerJob = len(job.outFiles)
-        if job.logFile:
-            filesPerJob += 1
 
         range = ((filesPerJob)*(jobNumber+1) / 1000 +1)*1000
 
-        if filename.split('.')[-1] != 'root':
+        if filename.split('.')[-1] != 'root' and filename.split('.')[-2] != 'root':
             range = '%s/log' % str(range) 
 
         return str(range)
@@ -170,44 +155,6 @@ class CMSSiteInformation(SiteInformation):
         lfcdir = ""
         full_lfn = ""
 
-        """
-        if dsname and filename:
-            to_strip= '%s%s' % ('-v',dsname.split('-v')[-1:][0])
-            tomatch = re.compile('-v([Z0-9-]+)/USER')
-            ext = os.path.splitext(filename)[1]
-            filenameNew = filename
-            if ext[1:].isdigit():
-                filenameNew = os.path.splitext(filename)[0]
-            ftype = 'root'
-            if filename.find('job.log_')>0: ftype = 'log'
-            value = int(os.path.splitext(filenameNew)[0].split('_')[-1:][0])
-            tolog("value= %s" % value)
-            tolog("ftype= %s" % ftype)
-            if tomatch.match(to_strip):
-                full_lfn_suffix = (('%s/%s/%s') % (dsname.split(to_strip)[0], self.findRange(value,ftype), filename ))
-                tolog(dsname)
-                tolog(to_strip)
-                tolog(tomatch.match(to_strip))
-                tolog(dsname.split(to_strip)[0])
-
-            else:
-                tolog(dsname)
-                tolog(to_strip)
-                tolog(tomatch.match(to_strip))
-                tolog(dsname.split(to_strip)[0])
-                pilotErrorDiag = "problem building full_lfn_suffix"
-                tolog('!!WARNING!!2990!! %s' % (pilotErrorDiag))
-                tracer_error = 'FULL_LFN_PROBLEM'
-                ec = error.ERR_STAGEOUTFAILED
-                return ec, pilotErrorDiag, tracer_error, dst_gpfn, lfcdir, full_lfn
-        else:
-            pilotErrorDiag = "dataset name or filename not defined"
-            tolog('!!WARNING!!2990!! %s' % (pilotErrorDiag))
-            tracer_error = 'CMS_OUTDS_NOT_DEFINED'
-            ec = error.ERR_STAGEOUTFAILED
-            return ec, pilotErrorDiag, tracer_error, dst_gpfn, lfcdir, full_lfn
-        """
-
         if "runGen" in newJobDef['job'].trf:
             """ case runGen 
                 dsname example: vmancine/GenericTTbar/AsoTest_130403_094107-v1/USER """
@@ -246,7 +193,7 @@ class CMSSiteInformation(SiteInformation):
             try:
                 nnnn = self.findRange(job, newfilename)
             except Exception, e:
-                tolog('Mancinellidebug error = %s' % e)
+                tolog('error = %s' % e)
                 nnnn = 'NNNN'
         else:
             nnnn = 'NNNN'

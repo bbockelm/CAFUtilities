@@ -135,7 +135,7 @@ class CMSExperiment(Experiment):
 
         # add the user proxy
         if os.environ.has_key('X509_USER_PROXY'):
-            run_command += 'export X509_USER_PROXY=%s;' % os.environ['X509_USER_PROXY']
+            run_command += 'export X509_USER_PROXY=%s; ' % os.environ['X509_USER_PROXY']
         else:
             tolog("Could not add user proxy to the run command (proxy does not exist)")
 
@@ -452,7 +452,7 @@ class CMSExperiment(Experiment):
 
         for _dir in dir_list:
             files = glob(os.path.join(workdir, _dir))
-            tolog("Mancinellidebug: removing files = %s" % files)
+            tolog("removing files = %s" % files)
             rc = remove(files)
             if not rc:
                 tolog("IGNORE: Failed to remove redundant file(s): %s" % (files))
