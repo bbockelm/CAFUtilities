@@ -25,8 +25,12 @@ then
         VERSIONS=($(ls $OSG_APP/cmssoft/cms/$SCRAM_ARCH/external/python | grep 2.6))
         PY_PATH=$OSG_APP/cmssoft/cms/$SCRAM_ARCH/external/python 
         echo 'python version: ' $VERSIONS
+elif [ -e /cvmfs/cms.cern.ch ]
+then
+        export VO_CMS_SW_DIR=/cvmfs/cms.cern.ch
+        . $VO_CMS_SW_DIR/cmsset_default.sh
 else
-	echo "Error: neither OSG_APP nor VO_CMS_SW_DIR environment variables were set" >&2
+	echo "Error: neither OSG_APP, CVMFS, nor VO_CMS_SW_DIR environment variables were set" >&2
 	echo "Error: Because of this, we can't load CMSSW. Not good." >&2
 	exit 2
 fi
