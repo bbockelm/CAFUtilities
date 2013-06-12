@@ -41,9 +41,9 @@ class Create(DBCreator):
         tm_task_failure CLOB,
         tm_job_sw VARCHAR(255) NOT NULL,
         tm_job_arch VARCHAR(255),
-        tm_input_dataset VARCHAR(255),
-        tm_site_whitelist VARCHAR(255),
-        tm_site_blacklist VARCHAR(255),
+        tm_input_dataset VARCHAR(500),
+        tm_site_whitelist VARCHAR(4000),
+        tm_site_blacklist VARCHAR(4000),
         tm_split_algo VARCHAR(255) NOT NULL,
         tm_split_args CLOB NOT NULL,
         tm_user_sandbox VARCHAR(255) NOT NULL,
@@ -53,16 +53,19 @@ class Create(DBCreator):
         tm_user_vo VARCHAR(255) NOT NULL,
         tm_user_role VARCHAR(255),
         tm_user_group VARCHAR(255),
-        tm_publish_name VARCHAR(1000),
+        tm_publish_name VARCHAR(500),
         tm_asyncdest VARCHAR(255) NOT NULL,
         tm_dbs_url VARCHAR(255) NOT NULL,
         tm_publish_dbs_url VARCHAR(255),
+        tm_publication VARCHAR(1) NOT NULL,
         tm_outfiles VARCHAR(255),
         tm_tfile_outfiles VARCHAR(255),
         tm_edm_outfiles VARCHAR(255),
         tm_transformation VARCHAR(255) NOT NULL,
+        tm_job_type VARCHAR(255) NOT NULL,
         tm_arguments CLOB,
-        CONSTRAINT taskname_pk PRIMARY KEY(tm_taskname)
+        CONSTRAINT taskname_pk PRIMARY KEY(tm_taskname),
+        CONSTRAINT check_tm_publication CHECK (tm_publication IN ('T', 'F'))
         )
         """
         self.create['c_jobgroups'] = """
@@ -74,7 +77,6 @@ class Create(DBCreator):
         tm_data_blocks CLOB,
         panda_jobgroup_failure CLOB,
         tm_user_dn VARCHAR(255) NOT NULL,
-        CONSTRAINT task_user_un UNIQUE(panda_jobdef_id, tm_user_dn),
         CONSTRAINT taskname_fk FOREIGN KEY(tm_taskname) references
             tasks(tm_taskname)
             ON DELETE CASCADE,

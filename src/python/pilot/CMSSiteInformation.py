@@ -18,6 +18,27 @@ from pUtil import tolog                      # Logging method that sends text to
 from pUtil import readpar                    # Used to read values from the schedconfig DB (queuedata)
 from PilotErrors import PilotErrors          # Error codes
 
+from optparse import (OptionParser,BadOptionError)
+
+class PassThroughOptionParser(OptionParser):
+    """
+    An unknown option pass-through implementation of OptionParser.
+
+    When unknown arguments are encountered, bundle with largs and try again,
+    until rargs is depleted.  
+
+    sys.exit(status) will still be called if a known argument is passed
+    incorrectly (e.g. missing arguments or bad argument types, etc.)        
+    """
+    def _process_args(self, largs, rargs, values):
+        while rargs:
+            try:
+                OptionParser._process_args(self,largs,rargs,values)
+            except (BadOptionError, Exception), e:
+                #largs.append(e.opt_str)
+                continue
+
+
 class CMSSiteInformation(SiteInformation):
 
     # private data members
@@ -87,7 +108,7 @@ class CMSSiteInformation(SiteInformation):
     """
  
     def findRange(self, job, filename):
-        jobNumber = int(self.extractJobPar(job, '--jobNumber'))
+        jobNumber = int(filename.split('_')[-2])
         filesPerJob = len(job.outFiles)
         if job.logFile:
             filesPerJob += 1
@@ -100,24 +121,16 @@ class CMSSiteInformation(SiteInformation):
         return str(range)
 
 
-    def extractJobPar(self, job, par):
+    def extractJobPar(self, job, par, ptype="string"):
 
         strpars = job.jobPars
-        try:
-            cmdopt = shlex.split(strpars)
-            opts, args = getopt.getopt(cmdopt, "a:o:",
-                               ["sourceURL=","jobNumber=","inputFile=","lumiMask=","runAndLumis=","dbs_url=","publish_dbs_url=","cmsswVersion=","scramArch="])
-            
-            for o, a in opts:
-                if o == par:
-                    tolog("Found option %s = %s" % (par, a))
-                    return a
-            tolog("Option %s not found " % par) 
-            return "" 
-        except Exception, e:
-            tolog("Failed to parse option command in job.jobPars = %s -- cause: %s" % (strpars, e))
-            return ""
-
+        cmdopt = shlex.split(strpars)
+        parser = PassThroughOptionParser()
+        parser.add_option(par,\
+                          dest='par',\
+                          type=ptype)
+        (options,args) = parser.parse_args(cmdopt)
+        return options.par
 
     def getProperPaths(self, error, analyJob, token, prodSourceLabel, dsname, filename, sitename, JobData, alt=False):
         """ Called by LocalSiteMover, from put_data method, instead of using SiteMover.getProperPaths 

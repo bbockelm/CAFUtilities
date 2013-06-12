@@ -28,52 +28,16 @@ baseURLCSRVSSL = "https://voatlas294.cern.ch:25443/server/panda"
 EC_Failed = 255
 
 globalTmpDir = ''
-
-serverCert = None
-serverKey = None
-serverDN = None
-uiSource = None
-credServerPath = '/tmp'
-
-def initProxyParameters(serverkey, servercert, serverdn, uisource, credpath):
-    global serverCert, serverKey, serverDN, uiSource, credServerPath
-    serverCert, serverKey, serverDN, uiSource, credServerPath = servercert, serverkey, serverdn, uisource, credpath
-
-def retrieveUserProxy(user, vo, group, role):
-    from WMCore.Credential.Proxy import Proxy
-    myproxyserver = "myproxy.cern.ch"
-    defaultDelegation = { 'vo': vo,
-                          'logger': LOGGER,
-                          'myProxySvr': 'myproxy.cern.ch',
-                          'proxyValidity' : '192:00',
-                          'min_time_left' : 36000,
-                          'userDN' : user,
-                          'group' : group if group else '',
-                          'role' : role if role else '',
-                          'server_key': serverKey,
-                          'server_cert': serverCert,
-                          'serverDN': serverDN,
-                          'uisource': uiSource,
-                          'credServerPath': credServerPath,}
-    timeleftthreshold = 60 * 60 * 24
-    proxy = Proxy(defaultDelegation)
-    userproxy = proxy.getProxyFilename(serverRenewer=True)
-    if proxy.getTimeLeft(userproxy) < timeleftthreshold:
-        proxy.logonRenewMyProxy()
-        timeleft = proxy.getTimeLeft(userproxy)
-        if timeleft is None or timeleft <= 0:
-            raise RuntimeError("Impossible to retrieve proxy from %s for %s." %(defaultDelegation['myProxySvr'], defaultDelegation['userDN']))
-
-    LOGGER.debug("User proxy file path: %s" % userproxy)
-    return userproxy
+#PandaSites = {}
+#PandaClouds = {}
 
 
-def userCertFile(userDN, vo, group, role):
-    userProxy = retrieveUserProxy(userDN, vo, group, role)
-    if os.access(userProxy,os.R_OK):
-        return userProxy
-    LOGGER.error("No valid grid proxy certificate found")
-    LOGGER.debug("Looking for proxy certificate in: %s" % userProxy)
+class PanDAException(Exception):
+    """
+    Specific errors coming from interaction with PanDa
+    """
+    exitcode = 3100
+
 
 def _x509():
     try:
@@ -88,7 +52,8 @@ def _x509():
         return x509
     # no valid proxy certificate
     # FIXME
-    raise PanDaException("No valid grid proxy certificate found")
+    raise PanDAException("No valid grid proxy certificate found")
+
 
 # look for a CA certificate directory
 def _x509_CApath():
@@ -271,9 +236,11 @@ class _Curl:
 
 
 # get site specs
-def getSiteSpecs(siteType=None):
+def getSiteSpecs(sslCert, sslKey, siteType=None):
     # instantiate curl
     curl = _Curl()
+    curl.sslCert = sslCert
+    curl.sslKey = sslKey
     # execute
     url = baseURL + '/getSiteSpecs'
     data = {}
@@ -290,9 +257,11 @@ def getSiteSpecs(siteType=None):
 
 
 # get cloud specs
-def getCloudSpecs():
+def getCloudSpecs(sslCert, sslKey):
     # instantiate curl
     curl = _Curl()
+    curl.sslCert = sslCert
+    curl.sslKey = sslKey
     # execute
     url = baseURL + '/getCloudSpecs'
     status,output = curl.get(url,{})
@@ -305,24 +274,29 @@ def getCloudSpecs():
         return EC_Failed,output+'\n'+errStr
 
 # refresh specs
-def refreshSpecs():
-
+def refreshSpecs(proxy):
     global PandaSites
     global PandaClouds
+
+    sslCert = proxy
+    sslKey  = proxy
     # get Panda Sites
-    tmpStat,PandaSites = getSiteSpecs()
+    tmpStat,PandaSites = getSiteSpecs(sslCert, sslKey)
     if tmpStat != 0:
         LOGGER.error("ERROR : cannot get Panda Sites")
         sys.exit(EC_Failed)
     # get cloud info
-    tmpStat,PandaClouds = getCloudSpecs()
+    tmpStat,PandaClouds = getCloudSpecs(sslCert, sslKey)
     if tmpStat != 0:
         LOGGER.error("ERROR : cannot get Panda Clouds")
         sys.exit(EC_Failed)
 
+def getSite(sitename):
+    global PandaSites
+    return PandaSites[sitename]['cloud']
 
 # submit jobs
-def submitJobs(jobs, user, vo, group, role, workflow, verbose=False):
+def submitJobs(jobs, proxy, verbose=False):
     # set hostname
     hostname = commands.getoutput('hostname')
     for job in jobs:
@@ -331,11 +305,9 @@ def submitJobs(jobs, user, vo, group, role, workflow, verbose=False):
     strJobs = pickle.dumps(jobs)
     # instantiate curl
     curl = _Curl()
-    #curl.sslCert = _x509()
-    #curl.sslKey  = _x509()
-    curl.sslCert = userCertFile(user, vo, group, role)
-    curl.sslKey  = userCertFile(user, vo, group, role)
-    curl.verbose = True #verbose
+    curl.sslCert = proxy
+    curl.sslKey  = proxy
+    curl.verbose = True
     # execute
     url = baseURLSSL + '/submitJobs'
     data = {'jobs':strJobs}
@@ -356,7 +328,7 @@ def submitJobs(jobs, user, vo, group, role, workflow, verbose=False):
 
 
 # run brokerage
-def runBrokerage(user, vo, group, role, sites,
+def runBrokerage(sites, proxy, 
                  atlasRelease=None, cmtConfig=None, verbose=False, trustIS=False, cacheVer='',
                  processingType='', loggingFlag=False, memorySize=0, useDirectIO=False, siteGroup=None,
                  maxCpuCount=-1):
@@ -375,16 +347,16 @@ def runBrokerage(user, vo, group, role, sites,
             return 0,'ERROR : no candidate.'
         else:
             return 0,{'site':'ERROR : no candidate.','logInfo':[]}
+    ## MATTIA comments this code here below
     # choose at most 50 sites randomly to avoid too many lookup
-    random.shuffle(sites)
-    sites = sites[:50]
+    #random.shuffle(sites)
+    #sites = sites[:50]
     # serialize
     strSites = pickle.dumps(sites)
     # instantiate curl
     curl = _Curl()
-    #curl.sslCert = _x509()
-    #curl.sslKey  = _x509()
-    curl.sslKey = curl.sslCert = userCertFile(user, vo, group, role)
+    curl.sslKey = proxy
+    curl.sslCert = proxy
     curl.verbose = verbose
     # execute
     url = baseURLSSL + '/runBrokerage'
@@ -443,16 +415,11 @@ def runBrokerage(user, vo, group, role, sites,
         return EC_Failed,None
 
 
-
-#####################################################################################
-#The following two functions, getPandIDsWithJobID and killJobs, are used bye the REST
-#They do not retrieve the proxy certificate of the user with myproxy, but just use
-#what is has bee provided in the X509_USER_PROXY variable by the caller
-#####################################################################################
-
+####################################################################################
+# Only the following function -getPandIDsWithJobID- is directly called by the REST #
+####################################################################################
 # get PandaIDs for a JobID
-#TODO check if we can remove user, vo, group, role,
-def getPandIDsWithJobID(jobID,user,vo,group,role,dn=None,nJobs=0,verbose=False,userproxy=None,credpath=None):
+def getPandIDsWithJobID(jobID, dn=None, nJobs=0, verbose=False, userproxy=None, credpath=None):
     # instantiate curl
     curl = _Curl()
     curl.verbose = verbose
@@ -466,29 +433,34 @@ def getPandIDsWithJobID(jobID,user,vo,group,role,dn=None,nJobs=0,verbose=False,u
     filehandler, proxyfile = tempfile.mkstemp(dir=credpath)
     with open(proxyfile, 'w') as pf:
         pf.write(userproxy)
+    curl.sslCert = proxyfile
+    curl.sslKey  = proxyfile 
 
-    # set it ...
-    curl.sslCert = proxyfile if proxyfile else x509()
-    curl.sslKey  = proxyfile if proxyfile else x509()
-    # call him ...
-    status,output = curl.post(url,data)
-
-    # Always delete it!
-    os.remove(proxyfile)
-
-    if status!=0:
-        LOGGER.debug(output)
-        return status,None
+    status = None
+    output = None
     try:
-        return status,pickle.loads(output)
+        # call him ...
+        status, output = curl.post(url, data)
     except:
         type, value, traceBack = sys.exc_info()
-        LOGGER.error("ERROR getPandIDsWithJobID : %s %s" % (type,value))
-        return EC_Failed,None
+        LOGGER.error("ERROR getPandIDsWithJobID : %s %s" % (type, value))
+    finally:
+        # Always delete it!
+        os.remove(proxyfile)
+
+    if status is not None and status!=0:
+        LOGGER.debug(str(output))
+        return status, None
+    try:
+        return status, pickle.loads(output)
+    except:
+        type, value, traceBack = sys.exc_info()
+        LOGGER.error("ERROR getPandIDsWithJobID : %s %s" % (type, value))
+        return EC_Failed, None
+
 
 # kill jobs
-#TODO check if we can remove user, vo, group, role,
-def killJobs(user, vo, group, role, ids, code=None, verbose=True, useMailAsID=False):
+def killJobs(ids, proxy, code=None, verbose=True, useMailAsID=False):
     # serialize
     strIDs = pickle.dumps(ids)
     # instantiate curl
@@ -509,13 +481,13 @@ def killJobs(user, vo, group, role, ids, code=None, verbose=True, useMailAsID=Fa
         return EC_Failed,output+'\n'+errStr
 
 # get full job status
-def getFullJobStatus(ids,user,vo,group,role,verbose=False):
+def getFullJobStatus(ids, proxy, verbose=False):
     # serialize
     strIDs = pickle.dumps(ids)
     # instantiate curl
     curl = _Curl()
-    curl.sslCert = userCertFile(user, vo, group, role)
-    curl.sslKey  = userCertFile(user, vo, group, role)
+    curl.sslCert = proxy
+    curl.sslKey  = proxy
     curl.verbose = verbose
     # execute
     url = baseURLSSL + '/getFullJobStatus'
@@ -540,7 +512,7 @@ def putFile(file,verbose=False,useCacheSrv=False,reuseSandbox=False):
             errStr += 'Your working directory contains too large files which cannot be put on cache area. '
             errStr += 'Please submit job without --noBuild/--libDS so that your files will be uploaded to SE'
             # get logger
-            raise PanDaException(errStr)
+            raise PanDAException(errStr)
     # instantiate curl
     curl = _Curl()
     curl.sslCert = _x509()
@@ -559,7 +531,7 @@ def putFile(file,verbose=False,useCacheSrv=False,reuseSandbox=False):
         data = {'fileSize':fileSize,'checkSum':checkSum}
         status,output = curl.post(url,data)
         if status != 0:
-            raise PanDaException('ERROR: Could not check Sandbox duplication with %s' % status)
+            raise PanDAException('ERROR: Could not check Sandbox duplication with %s' % status)
         elif output.startswith('FOUND:'):
             # found reusable sandbox
             hostName,reuseFileName = output.split(':')[1:]
@@ -580,7 +552,7 @@ def putFile(file,verbose=False,useCacheSrv=False,reuseSandbox=False):
     filename = ""
     servername = ""
     if status !=0:
-        raise PanDaException("Failure uploading input file into PanDa")
+        raise PanDAException("Failure uploading input file into PanDa")
     else:
        matchURL = re.search("(http.*://[^/]+)/", baseURLCSRVSSL)
        return 0, "True:%s:%s" % (matchURL.group(1), file.split('/')[-1])
