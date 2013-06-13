@@ -29,6 +29,8 @@ ALTER TABLE TASKS MODIFY (tm_publication NOT NULL);
 
 ALTER TABLE TASKS ADD CONSTRAINT check_tm_publication CHECK (tm_publication in ('T' , 'F'));
 
+-- poc3test updated until here --
+
 -- Add fields panda_submitted_jobs, tm_save_logs + constraint. CAF-291
 ALTER TABLE TASKS ADD (panda_resubmitted_jobs CLOB);
 
