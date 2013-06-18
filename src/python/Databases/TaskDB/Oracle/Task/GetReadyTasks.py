@@ -3,10 +3,11 @@
 """
 from WMCore.Database.DBFormatter import DBFormatter
 
+## to be changed update tasks set tm_task_status = 'QUEUED', tw_name where tm_task_status = 'NEW' AND ROWNUM <= '1';
 class GetReadyTasks(DBFormatter):
     """
     """
-    def execute(self, limit = 0, conn = None, transaction = False):
+    def execute(self, getstatus, twname, limit = 0, conn = None, transaction = False):
         """
         """
         if limit:
@@ -17,11 +18,11 @@ class GetReadyTasks(DBFormatter):
                           tm_user_sandbox, tm_cache_url, tm_username, tm_user_dn, tm_user_vo, \
                           tm_user_role, tm_user_group, tm_publish_name, tm_asyncdest, tm_dbs_url, \
                           tm_publish_dbs_url, tm_publication, tm_outfiles, tm_tfile_outfiles, tm_edm_outfiles, \
-                          tm_transformation, tm_job_type, tm_arguments, panda_resubmitted_jobs, tm_save_logs
+                          tm_transformation, tm_job_type, tm_arguments, panda_resubmitted_jobs, tm_save_logs, tw_name
                           FROM tasks
-                          WHERE (tm_task_status = 'KILL' OR tm_task_status = 'NEW' OR tm_task_status = 'RESUBMIT')
-                          AND ROWNUM <= :limit"""
-            binds = {"limit": limit}
+                          WHERE tm_task_status = :get_status
+                          AND ROWNUM <= :limit AND tw_name = :tw_name"""
+            binds = {"limit": limit, "tw_name": twname, "get_status":getstatus}
             result = self.dbi.processData(self.sql, binds, conn = conn,
                                           transaction = transaction)
         else:
@@ -32,9 +33,11 @@ class GetReadyTasks(DBFormatter):
                           tm_user_sandbox, tm_cache_url, tm_username, tm_user_dn, tm_user_vo, \
                           tm_user_role, tm_user_group, tm_publish_name, tm_asyncdest, tm_dbs_url, \
                           tm_publish_dbs_url, tm_publication, tm_outfiles, tm_tfile_outfiles, tm_edm_outfiles, \
-                          tm_transformation, tm_job_type, tm_arguments, panda_resubmitted_jobs, tm_save_logs
+                          tm_transformation, tm_job_type, tm_arguments, panda_resubmitted_jobs, tm_save_logs, tw_name
                           FROM tasks
-                          WHERE tm_task_status = 'KILL' OR tm_task_status = 'NEW' OR tm_task_status = 'RESUBMIT'"""
-            result = self.dbi.processData(self.sql, conn = conn,
+                          WHERE tm_task_status = :get_status
+                          AND tw_name = :tw_name"""
+            binds = {"tw_name": twname, "get_status": getstatus}
+            result = self.dbi.processData(self.sql, binds, conn = conn,
                                           transaction = transaction)
         return self.format(result)

@@ -39,7 +39,8 @@ class New(DBFormatter):
                  "user_vo": userVo, "user_role": userRole, "user_group": userGroup, "publish_name": publishName, \
                  "asyncdest": asyncDest, "dbs_url": dbsUrl, "publish_dbs_url": publishDbsUrl, "publication": publication, \
                  "outfiles": outFiles, "tfile_outfiles": tfileOutfiles, "edm_outfiles": edmOutfiles, \
-                 "transformation": transformation, "job_type": jobtype, "arguments": arguments, "resubmitted_jobs": resubmittedJobs, "save_logs": saveLogs}
+                 "transformation": transformation, "job_type": jobtype, "arguments": arguments, "resubmitted_jobs": resubmittedJobs, \
+                 "save_logs": saveLogsm}
 
         result = self.dbi.processData(self.sql, binds,
                          conn = conn, transaction = transaction)

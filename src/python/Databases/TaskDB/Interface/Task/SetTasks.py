@@ -103,3 +103,16 @@ def setFailedTasks(taskName, status, failure_reason):
         raise RuntimeError, msg
     return
 
+def updateTaskWorker(getstatus, setstatus, twname, limit):
+    """
+    _updateTaskWorker_
+    """
+    factory = DBConnect.getConnection(package='Databases.TaskDB')
+    tasks = factory(classname = "Task.UpdateWorker")
+    try:
+        tasks.execute(getstatus, setstatus, twname, limit)
+    except Exception, ex:
+        msg = "Unable to set status %s and failure_reason %s for taskname %s and worker %s\n" %(taskstatus, failure_reason, taskName, twname)
+        msg += str(ex)
+        raise RuntimeError, msg
+    return
