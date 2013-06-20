@@ -20,6 +20,25 @@ print "=== start ==="
 print time.ctime()
 
 
+from optparse import (OptionParser,BadOptionError,AmbiguousOptionError)
+
+class PassThroughOptionParser(OptionParser):
+    """
+    An unknown option pass-through implementation of OptionParser.
+
+    When unknown arguments are encountered, bundle with largs and try again,
+    until rargs is depleted.  
+
+    sys.exit(status) will still be called if a known argument is passed
+    incorrectly (e.g. missing arguments or bad argument types, etc.)        
+    """
+    def _process_args(self, largs, rargs, values):
+        while rargs:
+            try:
+                OptionParser._process_args(self,largs,rargs,values)
+            except (BadOptionError,AmbiguousOptionError), e:
+                largs.append(e.opt_str)
+
 def handleException(exitAcronymn, exitCode, exitMsg):
     report = {}
     report['exitAcronym'] = exitAcronymn
@@ -31,43 +50,68 @@ def handleException(exitAcronymn, exitCode, exitMsg):
     with open('jobReportExtract.pickle','w') as of:
         pickle.dump(report, of)
 
-#removed -p parameter of generic transformation
-opts, args = getopt.getopt(sys.argv[1:], "a:o:r:", ["sourceURL=",
-    #paramters coming from -p:
-    "jobNumber=", "cmsswVersion=", "scramArch=", "inputFile=", "runAndLumis="
-])
+parser = PassThroughOptionParser()
+parser.add_option('-a',\
+                  dest='archiveJob',\
+                  type='string')
+parser.add_option('-o',\
+                  dest='outFiles',\
+                  type='string')
+parser.add_option('-r',\
+                  dest='runDir',\
+                  type='string')
+parser.add_option('--inputFile',\
+                  dest='inputFile',\
+                  type='string')
+parser.add_option('--sourceURL',\
+                  dest='sourceURL',\
+                  type='string')
+parser.add_option('--jobNumber',\
+                  dest='jobNumber',\
+                  type='string')
+parser.add_option('--cmsswVersion',\
+                  dest='cmsswVersion',\
+                  type='string')
+parser.add_option('--scramArch',\
+                  dest='scramArch',\
+                  type='string')
+parser.add_option('--lheInputFiles',\
+                  dest='lheInputFiles',\
+                  type='string')
+parser.add_option('--firstEvent',\
+                  dest='firstEvent',\
+                  type='string')
+parser.add_option('--firstLumi',\
+                  dest='firstLumi',\
+                  type='string')
+parser.add_option('--lastEvent',\
+                  dest='lastEvent',\
+                  type='string')
+parser.add_option('--firstRun',\
+                  dest='firstRun',\
+                  type='string')
+parser.add_option('--seeding',\
+                  dest='seeding',\
+                  type='string')
 
-for o, a in opts:
-    if o == "-a":
-        archiveJob = a
-    if o == "-o":
-        outFiles = a
-    if o == "-r":
-        runDir = a
-    if o == "--sourceURL":
-        sourceURL = a
-    if o == "--jobNumber":
-        jobNumber = a
-    if o == "--cmsswVersion":
-        cmsswVersion = a
-    if o == "--scramArch":
-        scramArch = a
-    if o == "--inputFile":
-        inputFile = a
-    if o == "--runAndLumis":
-        runAndLumis = a
+(opts, args) = parser.parse_args(sys.argv[1:])
 
 try:
     print "=== parameters ==="
-    print archiveJob
-    print runDir
-    print sourceURL
-    print jobNumber
-    print cmsswVersion
-    print scramArch
-    print inputFile
-    print runAndLumis
-    print outFiles
+    print "archiveJob:    ", opts.archiveJob
+    print "runDir:        ", opts.runDir
+    print "sourceURL:     ", opts.sourceURL
+    print "jobNumber:     ", opts.jobNumber
+    print "cmsswVersion:  ", opts.cmsswVersion
+    print "scramArch:     ", opts.scramArch
+    print "inputFile      ", opts.inputFile
+    print "outFiles:      ", opts.outFiles
+    print "lheInputFiles: ", opts.lheInputFiles
+    print "firstEvent:    ", opts.firstEvent
+    print "lastEvent:     ", opts.lastEvent
+    print "firstLumi:     ", opts.firstLumi
+    print "firstRun:      ", opts.firstRun
+    print "seeding:       ", opts.seeding
     print "==================="
 except:
     type, value, traceBack = sys.exc_info()
@@ -78,7 +122,7 @@ except:
 #clean workdir ?
 
 #wget sandnox
-if archiveJob:
+if opts.archiveJob:
     os.environ['WMAGENTJOBDIR'] = os.getcwd()
     print "--- wget for jobO ---"
     output = commands.getoutput('wget -h')
@@ -87,7 +131,7 @@ if archiveJob:
         if re.search('--no-check-certificate',line) != None:
             wgetCommand = 'wget --no-check-certificate'
             break
-    com = '%s %s/cache/%s' % (wgetCommand,sourceURL,archiveJob)
+    com = '%s %s/cache/%s' % (wgetCommand, opts.sourceURL, opts.archiveJob)
     nTry = 3
     for iTry in range(nTry):
         print 'Try : %s' % iTry
@@ -100,7 +144,7 @@ if archiveJob:
             handleException("FAILED", EC_WGET, 'CMSRunAnaly ERROR: cound not get jobO files from panda server')
             sys.exit(EC_WGET)
         time.sleep(30)
-    print commands.getoutput('tar xvfzm %s' % archiveJob)
+    print commands.getoutput('tar xvfzm %s' % opts.archiveJob)
 
 #move the pset in the right place
 destDir = 'WMTaskSpace/cmsRun'
@@ -123,7 +167,7 @@ from WMCore.WMSpec.Steps.WMExecutionFailure import WMExecutionFailure
 
 try:
     setupLogging('.')
-    jobExitCode, _, _, _ = executeCMSSWStack(taskName = 'Analysis', stepName = 'cmsRun', scramSetup = '', scramCommand = 'scramv1', scramProject = 'CMSSW', scramArch = scramArch, cmsswVersion = cmsswVersion, jobReportXML = 'FrameworkJobReport.xml', cmsswCommand = 'cmsRun', cmsswConfig = 'PSet.py', cmsswArguments = '', workDir = os.getcwd(), userTarball = archiveJob, userFiles ='', preScripts = [], scramPreScripts = ['%s/TweakPSet.py %s \'%s\' \'%s\'' % (os.getcwd(), os.getcwd(), inputFile, runAndLumis)], stdOutFile = 'cmsRun-stdout.log', stdInFile = 'cmsRun-stderr.log', jobId = 223, jobRetryCount = 0, invokeCmd = 'python')
+    jobExitCode, _, _, _ = executeCMSSWStack(taskName = 'Analysis', stepName = 'cmsRun', scramSetup = '', scramCommand = 'scramv1', scramProject = 'CMSSW', scramArch = opts.scramArch, cmsswVersion = opts.cmsswVersion, jobReportXML = 'FrameworkJobReport.xml', cmsswCommand = 'cmsRun', cmsswConfig = 'PSet.py', cmsswArguments = '', workDir = os.getcwd(), userTarball = opts.archiveJob, userFiles ='', preScripts = [], scramPreScripts = ['%s/TweakPSet.py  MC %s \'%s\' \'%s\' %s %s %s %s %s \'%s\'' % (os.getcwd(), os.getcwd(), opts.inputFile, {}, opts.firstEvent, opts.lastEvent, opts.firstLumi, opts.firstRun, opts.seeding, opts.lheInputFiles)], stdOutFile = 'cmsRun-stdout.log', stdInFile = 'cmsRun-stderr.log', jobId = opts.jobNumber, jobRetryCount = 0, invokeCmd = 'python')
 except WMExecutionFailure, WMex:
     print "caught WMExecutionFailure - code = %s - name = %s - detail = %s" % (WMex.code, WMex.name, WMex.detail)
     exmsg = WMex.name
@@ -143,7 +187,7 @@ except Exception, ex:
 # rename output files
 if jobExitCode == 0:
     try:
-        for oldName,newName in literal_eval(outFiles).iteritems():
+        for oldName,newName in literal_eval(opts.outFiles).iteritems():
             os.rename(oldName, newName)
     except Exception, ex:
         handleException("FAILED", EC_MoveOutErr, "Exception while moving the files.")
