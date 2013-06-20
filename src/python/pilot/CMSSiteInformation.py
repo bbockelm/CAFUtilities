@@ -95,12 +95,12 @@ class CMSSiteInformation(SiteInformation):
     
  
     def findRange(self, job, filename):
-        jobNumber = int(filename.split('_')[-2])
+        jobNumber = int(filename.split('_')[-2]) #int(self.extractJobPar(job, '--jobNumber'))
         filesPerJob = len(job.outFiles)
 
         range = ((filesPerJob)*(jobNumber+1) / 1000 +1)*1000
 
-        if filename.split('.')[-1] != 'root' and filename.split('.')[-2] != 'root':
+        if filename.split('.')[-1] != 'root' and filename.split('.')[-2] != 'root' :
             range = '%s/log' % str(range) 
 
         return str(range)
@@ -116,6 +116,7 @@ class CMSSiteInformation(SiteInformation):
                           type=ptype)
         (options,args) = parser.parse_args(cmdopt)
         return options.par
+
 
     def getProperPaths(self, error, analyJob, token, prodSourceLabel, dsname, filename, sitename, JobData, alt=False):
         """ Called by LocalSiteMover, from put_data method, instead of using SiteMover.getProperPaths 
