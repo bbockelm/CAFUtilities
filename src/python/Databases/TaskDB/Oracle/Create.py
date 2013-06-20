@@ -46,6 +46,7 @@ class Create(DBCreator):
         tm_site_blacklist VARCHAR(4000),
         tm_split_algo VARCHAR(255) NOT NULL,
         tm_split_args CLOB NOT NULL,
+        tm_totalunits NUMBER(38),
         tm_user_sandbox VARCHAR(255) NOT NULL,
         tm_cache_url VARCHAR(255) NOT NULL,
         tm_username VARCHAR(255) NOT NULL,
