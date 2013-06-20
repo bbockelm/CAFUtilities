@@ -17,7 +17,7 @@ from hashlib import sha1
 
 LOGGER = logging.getLogger(__name__)
 
-baseURL = 'http://voatlas220.cern.ch:25080/server/panda'
+baseURL = 'http://pandaserver.cern.ch:25080/server/panda'
 baseURLSSL = 'https://pandaserver.cern.ch:25443/server/panda'
 
 baseURLCSRV    = "http://voatlas294.cern.ch:25080/server/panda"
