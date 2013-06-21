@@ -78,7 +78,8 @@ parser.add_option('--scramArch',\
                   type='string')
 parser.add_option('--runAndLumis',\
                   dest='runAndLumis',\
-                  type='string')
+                  type='string',\
+                  default='{}')
 
 (opts, args) = parser.parse_args(sys.argv[1:])
 
