@@ -112,7 +112,7 @@ def updateTaskWorker(getstatus, setstatus, twname, limit):
     try:
         tasks.execute(getstatus, setstatus, twname, limit)
     except Exception, ex:
-        msg = "Unable to set status %s and failure_reason %s for taskname %s and worker %s\n" %(taskstatus, failure_reason, taskName, twname)
+        msg = "Unable to get status %s and update status %s for taskworker %s\n" %(getstatus, setstatus, twname)
         msg += str(ex)
         raise RuntimeError, msg
     return

@@ -39,3 +39,11 @@ UPDATE TASKS SET tm_save_logs = 'F';
 ALTER TABLE TASKS MODIFY (tm_save_logs NOT NULL);
 
 ALTER TABLE TASKS ADD CONSTRAINT check_tm_save_logs CHECK (tm_save_logs in ('T' , 'F'));
+
+-- cafutilities 0.0.1pre11 adds two new columns
+ALTER TABLE tasks ADD (tm_totalunits NUMBER(38));
+ALTER TABLE tasks ADD (tw_name VARCHAR(255));
+UPDATE tasks SET tw_name = ' ';
+ALTER TABLE tasks MODIFY (tw_name DEFAULT ' ');
+ALTER TABLE tasks MODIFY (tw_name NOT NULL);
+
