@@ -42,7 +42,7 @@ rm -rf $DLSDIR && mkdir -p $DLSDIR
 rm -rf $CRABSERVERDIR && mkdir -p $CRABSERVERDIR
 rm -rf $CRABCLIENTDIR && mkdir -p $CRABCLIENTDIR
 
-cp $BASEDIR/gWMS-CMSRunAnaly.sh $STARTDIR || exit 3
+cp $BASEDIR/gWMS-CMSRunAnalysis.sh $STARTDIR || exit 3
 
 pushd $STARTDIR
 
@@ -118,10 +118,10 @@ EOF
 
 mkdir -p bin
 cp CRABServer-$CRABSERVERVER/bin/* bin/
-cp CAFUtilities-$CAFUTILITIESVER/src/python/transformation/CMSRunAnaly.sh bin/
+cp CAFUtilities-$CAFUTILITIESVER/src/python/transformation/CMSRunAnalysis.sh bin/
 
-tar zcf $ORIGDIR/TaskManagerRun.tar.gz CRAB3.zip setup.sh crab3 crab gWMS-CMSRunAnaly.sh bin || exit 4
-tar zcf $ORIGDIR/CRAB3-gWMS.tar.gz CRAB3.zip setup.sh crab3 crab gWMS-CMSRunAnaly.sh bin lib || exit 4
+tar zcf $ORIGDIR/TaskManagerRun.tar.gz CRAB3.zip setup.sh crab3 crab gWMS-CMSRunAnalysis.sh bin || exit 4
+tar zcf $ORIGDIR/CRAB3-gWMS.tar.gz CRAB3.zip setup.sh crab3 crab gWMS-CMSRunAnalysis.sh bin lib || exit 4
 
 popd
 

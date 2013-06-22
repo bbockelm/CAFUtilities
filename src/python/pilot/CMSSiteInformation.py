@@ -226,7 +226,7 @@ class CMSSiteInformation(SiteInformation):
                 newfilename = '%s%s_%s.%s' % (filename.split('.')[1], filename.split('.')[2], rnd, filename.split('.')[3])
 
         else:
-            """ case CMSRunAnaly 
+            """ case CMSRunAnalysis 
                 dsname example: /RelValProdTTbar/mcinquil-test000001-psethash/USER"""
             hnusername = dsname.split('/')[2].split('-')[0]
             primarydataset = dsname.split('/')[1]

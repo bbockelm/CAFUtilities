@@ -34,7 +34,7 @@ fi
 date
 hostname
 
-sh ./CMSRunAnaly.sh "$@"
+sh ./CMSRunAnalysis.sh "$@"
 EXIT_STATUS=$?
 
 mv jobReport.json jobReport.json.$CRAB_Id

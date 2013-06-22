@@ -433,7 +433,7 @@ class CMSExperiment(Experiment):
                     "pandawnutil",
                     "pilotlog.out",
                     "pilot.stderr",
-                    "CMSRunAnaly.sh",
+                    "CMSRunAnalysis.sh",
                     "*.tgz",
                     "PSetTweaks",
                     "WMCore.zip",

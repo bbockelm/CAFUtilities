@@ -75,9 +75,9 @@ class TestActionHandler(unittest.TestCase):
 
         result = result[0]
         self.assertTrue(os.path.exists(result))
-        self.assertTrue(os.path.exists(os.path.join(result, 'CMSRunAnaly.sh')))
+        self.assertTrue(os.path.exists(os.path.join(result, 'CMSRunAnalysis.sh')))
         self.assertTrue(os.path.exists(os.path.join(result, 'cmscp.py')))
-        self.assertTrue(os.path.exists(os.path.join(result, 'gWMS-CMSRunAnaly.sh')))
+        self.assertTrue(os.path.exists(os.path.join(result, 'gWMS-CMSRunAnalysis.sh')))
         self.assertTrue(os.path.exists(os.path.join(result, 'dag_bootstrap_startup.sh')))
         self.assertTrue(os.path.exists(os.path.join(result, 'RunJobs.dag')))
 
