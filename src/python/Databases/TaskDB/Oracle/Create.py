@@ -67,7 +67,7 @@ class Create(DBCreator):
         tm_arguments CLOB,
         panda_resubmitted_jobs CLOB,
         tm_save_logs VARCHAR(1) NOT NULL,
-        tw_name VARCHAR(255) NOT NULL,
+        tw_name VARCHAR(255),
         CONSTRAINT taskname_pk PRIMARY KEY(tm_taskname),
         CONSTRAINT check_tm_publication CHECK (tm_publication IN ('T', 'F')),
         CONSTRAINT check_tm_save_logs CHECK (tm_save_logs IN ('T', 'F'))
