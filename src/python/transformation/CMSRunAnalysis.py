@@ -8,6 +8,7 @@ import re
 import json
 import traceback
 import pickle
+import os.path
 from ast import literal_eval
 
 EC_MissingArg  =        50113 #10 for ATLAS trf
@@ -32,10 +33,13 @@ def handleException(exitAcronymn, exitCode, exitMsg):
         pickle.dump(report, of)
 
 #removed -p parameter of generic transformation
-opts, args = getopt.getopt(sys.argv[1:], "a:o:r:", ["sourceURL=",
+opts, aargas = getopt.getopt(sys.argv[1:], "a:o:r:", ["sourceURL=",
     #paramters coming from -p:
-    "jobNumber=", "cmsswVersion=", "scramArch=", "inputFile=", "runAndLumis="
+    "jobNumber=", "cmsswVersion=", "scramArch=", 
+    "inputFile=", "runAndLumis=", "oneEventMode="
 ])
+
+oneEventMode = 0
 
 for o, a in opts:
     if o == "-a":
@@ -56,7 +60,8 @@ for o, a in opts:
         inputFile = a
     if o == "--runAndLumis":
         runAndLumis = a
-
+    if o == "--oneEventMode":
+        oneEventMode = int(a)
 try:
     print "=== parameters ==="
     print archiveJob
@@ -68,6 +73,7 @@ try:
     print inputFile
     print runAndLumis
     print outFiles
+    print oneEventMode
     print "==================="
 except:
     type, value, traceBack = sys.exc_info()
@@ -80,27 +86,31 @@ except:
 #wget sandnox
 if archiveJob:
     os.environ['WMAGENTJOBDIR'] = os.getcwd()
-    print "--- wget for jobO ---"
-    output = commands.getoutput('wget -h')
-    wgetCommand = 'wget'
-    for line in output.split('\n'):
-        if re.search('--no-check-certificate',line) != None:
-            wgetCommand = 'wget --no-check-certificate'
-            break
-    com = '%s %s/cache/%s' % (wgetCommand,sourceURL,archiveJob)
-    nTry = 3
-    for iTry in range(nTry):
-        print 'Try : %s' % iTry
-        status,output = commands.getstatusoutput(com)
-        print output
-        if status == 0:
-            break
-        if iTry+1 == nTry:
-            print "ERROR : cound not get jobO files from panda server"
-            handleException("FAILED", EC_WGET, 'CMSRunAnaly ERROR: cound not get jobO files from panda server')
-            sys.exit(EC_WGET)
-        time.sleep(30)
-    print commands.getoutput('tar xvfzm %s' % archiveJob)
+    if os.path.exists(archiveJob):
+        print "Sandbox %s already exists, skipping" % archiveJob
+    else:
+        print "--- wget for jobO ---"
+        output = commands.getoutput('wget -h')
+        wgetCommand = 'wget'
+        for line in output.split('\n'):
+            if re.search('--no-check-certificate',line) != None:
+                wgetCommand = 'wget --no-check-certificate'
+                break
+        com = '%s %s/cache/%s' % (wgetCommand,sourceURL,archiveJob)
+        nTry = 3
+        for iTry in range(nTry):
+            print 'Try : %s' % iTry
+            status,output = commands.getstatusoutput(com)
+            print output
+            if status == 0:
+                break
+            if iTry+1 == nTry:
+                print "ERROR : cound not get jobO files from panda server"
+                handleException("FAILED", EC_WGET, 'CMSRunAnaly ERROR: cound not get jobO files from panda server')
+                sys.exit(EC_WGET)
+            time.sleep(30)
+        print "Extracting tarball"
+        print commands.getoutput('tar xvfzm %s' % archiveJob)
 
 #move the pset in the right place
 destDir = 'WMTaskSpace/cmsRun'
@@ -123,7 +133,8 @@ from WMCore.WMSpec.Steps.WMExecutionFailure import WMExecutionFailure
 
 try:
     setupLogging('.')
-    jobExitCode, _, _, _ = executeCMSSWStack(taskName = 'Analysis', stepName = 'cmsRun', scramSetup = '', scramCommand = 'scramv1', scramProject = 'CMSSW', scramArch = scramArch, cmsswVersion = cmsswVersion, jobReportXML = 'FrameworkJobReport.xml', cmsswCommand = 'cmsRun', cmsswConfig = 'PSet.py', cmsswArguments = '', workDir = os.getcwd(), userTarball = archiveJob, userFiles ='', preScripts = [], scramPreScripts = ['%s/TweakPSet.py %s \'%s\' \'%s\'' % (os.getcwd(), os.getcwd(), inputFile, runAndLumis)], stdOutFile = 'cmsRun-stdout.log', stdInFile = 'cmsRun-stderr.log', jobId = 223, jobRetryCount = 0, invokeCmd = 'python')
+    print "About to execute CMSSW stack"
+    jobExitCode, _, _, _ = executeCMSSWStack(taskName = 'Analysis', stepName = 'cmsRun', scramSetup = '', scramCommand = 'scramv1', scramProject = 'CMSSW', scramArch = scramArch, cmsswVersion = cmsswVersion, jobReportXML = 'FrameworkJobReport.xml', cmsswCommand = 'cmsRun', cmsswConfig = 'PSet.py', cmsswArguments = '', workDir = os.getcwd(), userTarball = archiveJob, userFiles ='', preScripts = [], scramPreScripts = ['%s/TweakPSet.py %s \'%s\' \'%s\' %s' % (os.getcwd(), os.getcwd(), inputFile, runAndLumis, oneEventMode)], stdOutFile = 'cmsRun-stdout.log', stdInFile = 'cmsRun-stderr.log', jobId = 223, jobRetryCount = 0, invokeCmd = 'python')
 except WMExecutionFailure, WMex:
     print "caught WMExecutionFailure - code = %s - name = %s - detail = %s" % (WMex.code, WMex.name, WMex.detail)
     exmsg = WMex.name
@@ -135,6 +146,7 @@ except WMExecutionFailure, WMex:
 except Exception, ex:
     #print "jobExitCode = %s" % jobExitCode
     handleException("FAILED", EC_CMSRunWrapper, "failed to generate cmsRun cfg file at runtime")
+    raise
     #sys.exit(EC_CMSRunWrapper)
     sys.exit(0)
 
