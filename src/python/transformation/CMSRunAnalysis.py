@@ -10,6 +10,7 @@ import traceback
 import pickle
 import os.path
 from ast import literal_eval
+import WMCore.Storage.SiteLocalConfig as SiteLocalConfig
 
 EC_MissingArg  =        50113 #10 for ATLAS trf
 EC_CMSRunWrapper =      10040
@@ -178,6 +179,9 @@ try:
         report['exitAcronym'] = "OK"
         report['exitCode'] = 0
         report['exitMsg'] = "OK"
+
+    slc = SiteLocalConfig.loadSiteLocalConfig()
+    report['executed_site'] = slc.siteName
     with open('jobReport.json','w') as of:
         json.dump(report, of)
     with open('jobReportExtract.pickle','w') as of:

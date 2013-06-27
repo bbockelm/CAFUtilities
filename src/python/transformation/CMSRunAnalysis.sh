@@ -23,7 +23,7 @@ elif [ "x" != "x$OSG_APP" ]
 then
     echo 'OSG style'  
     set +x
-	. $OSG_APP/cmssoft/cms/cmsset_default.sh CMSSW_3_3_2
+	. $OSG_APP/cmssoft/cms/cmsset_default.sh
     set -x
     declare -a VERSIONS
     VERSIONS=($(ls $OSG_APP/cmssoft/cms/$SCRAM_ARCH/external/python | grep 2.6))
