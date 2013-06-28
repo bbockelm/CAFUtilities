@@ -18,7 +18,7 @@ from TaskWorker.WorkerExceptions import PanDAException
 
 LOGGER = logging.getLogger(__name__)
 
-baseURL = 'http://voatlas220.cern.ch:25080/server/panda'
+baseURL = 'http://pandaserver.cern.ch:25080/server/panda'
 baseURLSSL = 'https://pandaserver.cern.ch:25443/server/panda'
 
 baseURLCSRV    = "http://voatlas294.cern.ch:25080/server/panda"
@@ -328,7 +328,7 @@ def submitJobs(jobs, proxy, verbose=False):
 
 
 # run brokerage
-def runBrokerage(sites, proxy, 
+def runBrokerage(sites, proxy,
                  atlasRelease=None, cmtConfig=None, verbose=False, trustIS=False, cacheVer='',
                  processingType='', loggingFlag=False, memorySize=0, useDirectIO=False, siteGroup=None,
                  maxCpuCount=-1):
@@ -434,7 +434,7 @@ def getPandIDsWithJobID(jobID, dn=None, nJobs=0, verbose=False, userproxy=None, 
     with open(proxyfile, 'w') as pf:
         pf.write(userproxy)
     curl.sslCert = proxyfile
-    curl.sslKey  = proxyfile 
+    curl.sslKey  = proxyfile
 
     status = None
     output = None
@@ -465,8 +465,8 @@ def killJobs(ids, proxy, code=None, verbose=True, useMailAsID=False):
     strIDs = pickle.dumps(ids)
     # instantiate curl
     curl = _Curl()
-    curl.sslCert = _x509()
-    curl.sslKey  = _x509()
+    curl.sslCert = proxy
+    curl.sslKey  = proxy
     curl.verbose = verbose
     # execute
     url = baseURLSSL + '/killJobs'

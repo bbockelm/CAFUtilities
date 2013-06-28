@@ -1,3 +1,3 @@
 
-* We need a file named CMSRunAnalt.tgz with WMCore.zip, CMSRunAnaly.py, and TweakPSet.py
+* We need a file named CMSRunAnaly.tgz with WMCore.zip, CMSRunAnaly.py, and TweakPSet.py
 * The WMCore patch needed by the transformation is https://github.com/mmascher/WMCore/commit/476987e86ebe4f1352b3b27849b50347d8610a10

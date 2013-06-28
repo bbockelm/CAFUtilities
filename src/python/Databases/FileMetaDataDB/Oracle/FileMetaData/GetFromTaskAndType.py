@@ -2,6 +2,7 @@
 from WMCore.Database.DBFormatter import DBFormatter
 
 class GetFromTaskAndType(DBFormatter):
+    PANDAID, OUTDS, ACQERA, SWVER, INEVENTS, GLOBALTAG, PUBLISHNAME, LOCATION, TMPLOCATION, RUNLUMI, ADLER32, CKSUM, MD5, LFN, SIZE, PARENTS = range(16)
     sql = """SELECT panda_job_id AS pandajobid,
                         fmd_outdataset AS outdataset,
                         fmd_acq_era AS acquisitionera,
@@ -19,5 +20,7 @@ class GetFromTaskAndType(DBFormatter):
                         fmd_size AS filesize,
                         fmd_parent AS parents
                  FROM filemetadata
-                 WHERE tm_taskname = :taskname AND fmd_type = :filetype
+                 WHERE tm_taskname = :taskname
+                 AND fmd_type IN (SELECT REGEXP_SUBSTR(:filetype, '[^,]+', 1, LEVEL) FROM DUAL CONNECT BY LEVEL <= REGEXP_COUNT(:filetype, ',') + 1)
+                 ORDER BY fmd_creation_time DESC
           """

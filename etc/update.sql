@@ -28,3 +28,22 @@ UPDATE TASKS SET tm_publication = 'F';
 ALTER TABLE TASKS MODIFY (tm_publication NOT NULL);
 
 ALTER TABLE TASKS ADD CONSTRAINT check_tm_publication CHECK (tm_publication in ('T' , 'F'));
+
+-- poc3test updated until here --
+
+-- Add fields panda_submitted_jobs, tm_save_logs + constraint. CAF-291
+ALTER TABLE TASKS ADD (panda_resubmitted_jobs CLOB);
+
+ALTER TABLE TASKS ADD (tm_save_logs VARCHAR(1));
+UPDATE TASKS SET tm_save_logs = 'F';
+ALTER TABLE TASKS MODIFY (tm_save_logs NOT NULL);
+
+ALTER TABLE TASKS ADD CONSTRAINT check_tm_save_logs CHECK (tm_save_logs in ('T' , 'F'));
+
+-- cafutilities 0.0.1pre11 adds two new columns
+ALTER TABLE tasks ADD (tm_totalunits NUMBER(38));
+ALTER TABLE tasks ADD (tw_name VARCHAR(255));
+UPDATE tasks SET tw_name = ' ';
+ALTER TABLE tasks MODIFY (tw_name DEFAULT ' ');
+ALTER TABLE tasks MODIFY (tw_name NOT NULL);
+

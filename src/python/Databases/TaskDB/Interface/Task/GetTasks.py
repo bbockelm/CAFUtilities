@@ -33,14 +33,14 @@ def getKillTasks():
         raise RuntimeError, msg
     return taskList
 
-def getReadyTasks(limit = 0):
+def getReadyTasks(getstatus, twname, limit = 0):
     """
     _getKillTasks_
     """
     factory = DBConnect.getConnection(package='Databases.TaskDB')
     tasks = factory(classname = "Task.GetReadyTasks")
     try:
-        taskList = tasks.execute(limit)
+        taskList = tasks.execute(getstatus, twname, limit)
     except Exception, ex:
         msg = "Unable to get ready tasks \n"
         msg += str(ex)

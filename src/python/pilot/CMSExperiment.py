@@ -10,7 +10,7 @@ from Experiment import Experiment          # Main experiment class
 from PilotErrors import PilotErrors        # Error codes
 from pUtil import tolog                    # Logging method that sends text to the pilot log
 from pUtil import readpar                  # Used to read values from the schedconfig DB (queuedata)
-from pUtil import isAnalysisJob            # Is the current job a user analysis job or a production job?
+#from pUtil import isAnalysisJob            # Is the current job a user analysis job or a production job?
 from pUtil import getCmtconfig             # Get the cmtconfig from the job def or queuedata
 from pUtil import verifyReleaseString      # To verify the release string (move to Experiment later)
 from pUtil import setPilotPythonVersion    # Which python version is used by the pilot
@@ -101,8 +101,7 @@ class CMSExperiment(Experiment):
         tolog("Using %s" % (pybin))
         return ec, pilotErrorDiag, pybin
 
-    def extractJobPar(self, job, par, ptype="string"):
-        """ return parameter value extracted from jobPars """
+    def extractJobPar(self, job, par, ptype='string'):
 
         strpars = job.jobPars
         cmdopt = shlex.split(strpars)
@@ -111,11 +110,10 @@ class CMSExperiment(Experiment):
                           dest='par',\
                           type=ptype)
         (options,args) = parser.parse_args(cmdopt)
-        return options.par
+        return options.par 
 
 
-
-    def getCMSAnalysisRunCommand(self, job, jobSite, trfName):
+    def getCMSRunCommand(self, job, jobSite, trfName):
 
         from RunJobUtilities import updateCopysetups
 
@@ -135,10 +133,11 @@ class CMSExperiment(Experiment):
 
         # add the user proxy
         if os.environ.has_key('X509_USER_PROXY'):
-            run_command += 'export X509_USER_PROXY=%s;' % os.environ['X509_USER_PROXY']
+            run_command += 'export X509_USER_PROXY=%s; ' % os.environ['X509_USER_PROXY']
         else:
             tolog("Could not add user proxy to the run command (proxy does not exist)")
 
+        """
         strpars = job.jobPars
         cmdopt = shlex.split(strpars)
         parser = PassThroughOptionParser()
@@ -178,7 +177,9 @@ class CMSExperiment(Experiment):
         paramsstring += '-o "%s" '              % options.o
 
         tolog("paramsstring = %s" % paramsstring)
-        run_command += './%s %s' % (trfName, paramsstring)
+        """
+        run_command += './%s %s' % (trfName, job.jobPars)
+
 
         return ec, pilotErrorDiag, run_command
 
@@ -186,6 +187,12 @@ class CMSExperiment(Experiment):
     def isAnalysisJob(self, trf):
         """ Always true for the moment"""
         return True
+
+    def isCMSRunJob(self, trf):
+        if "CMSRunAnaly" in trf or "CMSRunMCProd" in trf:
+            return True
+        else:
+            return False
 
 
     def getJobExecutionCommand(self, job, jobSite, pilot_initdir):
@@ -213,7 +220,8 @@ class CMSExperiment(Experiment):
         JEM = "NO"
 
         # Is it's an analysis job or not?
-        analysisJob = self.isAnalysisJob(job.trf)
+        isCMSRunJob = self.isCMSRunJob(job.trf)
+        tolog("isCMSRunJob = %s " % isCMSRunJob)
 
         # Command used to download trf
         wgetCommand = 'wget'
@@ -229,14 +237,14 @@ class CMSExperiment(Experiment):
             return ec, pilotErrorDiag, "", special_setup_cmd, JEM, cmtconfig
 
         # Define the job execution command
-        if analysisJob:
+        if isCMSRunJob:
             # Try to download the analysis trf
             status, pilotErrorDiag, trfName = self.getAnalysisTrf(wgetCommand, job.trf, pilot_initdir)
             if status != 0:
                 return status, pilotErrorDiag, "", special_setup_cmd, JEM, cmtconfig
 
             scramArchSetup = self.getScramArchSetupCommand(job)
-            ec, pilotErrorDiag, cmdtrf = self.getCMSAnalysisRunCommand(job, jobSite, trfName)
+            ec, pilotErrorDiag, cmdtrf = self.getCMSRunCommand(job, jobSite, trfName)
             cmd = "%s %s" % (scramArchSetup, cmdtrf)
 
         # Set special_setup_cmd if necessary
@@ -248,7 +256,7 @@ class CMSExperiment(Experiment):
         cmd += " 1>%s 2>%s" % (job.stdout, job.stderr)
         tolog("\nCommand to run the job is: \n%s" % (cmd))
 
-        return 0, pilotErrorDiag, cmd, special_setup_cmd, JEM, cmtconfig        
+        return 0, pilotErrorDiag, cmd, special_setup_cmd, JEM, cmtconfig
 
     def getScramArchSetupCommand(self, job):
         """ Looks for the scramArch option in the job.jobPars attribute and build 
@@ -256,9 +264,8 @@ class CMSExperiment(Experiment):
 
         scramArch = self.extractJobPar(job, '--scramArch')
         if scramArch != None:
-            return "export SCRAM_ARCH=%s; " % scramArch
+            return "export SCRAM_ARCH=%s;" % scramArch
         return ""
-
 
 
     def getSpecialSetupCommand(self):
@@ -427,6 +434,7 @@ class CMSExperiment(Experiment):
         dir_list = [#"AtlasProduction*",
                     "*.py",
                     "*.pyc",
+                    # Mancinelli
                     "pandaJobData.out",
                     "Pilot_VmPeak.txt",
                     "pandatracerlog.txt",
@@ -442,7 +450,7 @@ class CMSExperiment(Experiment):
                     "WMTaskSpace",
                     "process.id",
                     "cmsRun-main.sh",
-                    "PSet.pkl",
+                    #"PSet.pkl",
                     "jobState-*-test.pickle",
                     "ALLFILESTRANSFERRED",
                     "OutPutFileCatalog.xml",
@@ -457,6 +465,7 @@ class CMSExperiment(Experiment):
             if not rc:
                 tolog("IGNORE: Failed to remove redundant file(s): %s" % (files))
 
+        tolog("Mancinellidebug: content of workdir = %s" % os.listdir(workdir))
 
 
 

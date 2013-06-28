@@ -75,14 +75,14 @@ def setReadyTasks(taskName, status):
         raise RuntimeError, msg
     return
 
-def setInjectedTasks(taskName, status, jobSetId):
+def setInjectedTasks(taskName, status, jobSetId, resubold):
     """
     _setStartInjection_
     """
     factory = DBConnect.getConnection(package='Databases.TaskDB')
     tasks = factory(classname = "Task.SetInjectedTasks")
     try:
-        tasks.execute(taskName, status, jobSetId)
+        tasks.execute(taskName, status, jobSetId, resubold)
     except Exception, ex:
         msg = "Unable to set status %s and jobSetId %s for taskname %s\n" %(status, jobSetId, taskName)
         msg += str(ex)
@@ -103,3 +103,16 @@ def setFailedTasks(taskName, status, failure_reason):
         raise RuntimeError, msg
     return
 
+def updateTaskWorker(getstatus, setstatus, twname, limit):
+    """
+    _updateTaskWorker_
+    """
+    factory = DBConnect.getConnection(package='Databases.TaskDB')
+    tasks = factory(classname = "Task.UpdateWorker")
+    try:
+        tasks.execute(getstatus, setstatus, twname, limit)
+    except Exception, ex:
+        msg = "Unable to get status %s and update status %s for taskworker %s\n" %(getstatus, setstatus, twname)
+        msg += str(ex)
+        raise RuntimeError, msg
+    return

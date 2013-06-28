@@ -46,6 +46,7 @@ class Create(DBCreator):
         tm_site_blacklist VARCHAR(4000),
         tm_split_algo VARCHAR(255) NOT NULL,
         tm_split_args CLOB NOT NULL,
+        tm_totalunits NUMBER(38),
         tm_user_sandbox VARCHAR(255) NOT NULL,
         tm_cache_url VARCHAR(255) NOT NULL,
         tm_username VARCHAR(255) NOT NULL,
@@ -64,8 +65,12 @@ class Create(DBCreator):
         tm_transformation VARCHAR(255) NOT NULL,
         tm_job_type VARCHAR(255) NOT NULL,
         tm_arguments CLOB,
+        panda_resubmitted_jobs CLOB,
+        tm_save_logs VARCHAR(1) NOT NULL,
+        tw_name VARCHAR(255),
         CONSTRAINT taskname_pk PRIMARY KEY(tm_taskname),
-        CONSTRAINT check_tm_publication CHECK (tm_publication IN ('T', 'F'))
+        CONSTRAINT check_tm_publication CHECK (tm_publication IN ('T', 'F')),
+        CONSTRAINT check_tm_save_logs CHECK (tm_save_logs IN ('T', 'F'))
         )
         """
         self.create['c_jobgroups'] = """
