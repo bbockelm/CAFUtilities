@@ -113,8 +113,8 @@ except:
 #wget sandnox
 if opts.archiveJob:
     os.environ['WMAGENTJOBDIR'] = os.getcwd()
-    if os.path.exists(archiveJob):
-        print "Sandbox %s already exists, skipping" % archiveJob
+    if os.path.exists(opts.archiveJob):
+        print "Sandbox %s already exists, skipping" % opts.archiveJob
     else:
         print "--- wget for jobO ---"
         output = commands.getoutput('wget -h')
@@ -159,7 +159,7 @@ from WMCore.WMSpec.Steps.WMExecutionFailure import WMExecutionFailure
 
 try:
     setupLogging('.')
-    jobExitCode, _, _, _ = executeCMSSWStack(taskName = 'Analysis', stepName = 'cmsRun', scramSetup = '', scramCommand = 'scramv1', scramProject = 'CMSSW', scramArch = opts.scramArch, cmsswVersion = opts.cmsswVersion, jobReportXML = 'FrameworkJobReport.xml', cmsswCommand = 'cmsRun', cmsswConfig = 'PSet.py', cmsswArguments = '', workDir = os.getcwd(), userTarball = opts.archiveJob, userFiles ='', preScripts = [], scramPreScripts = ['%s/TweakPSet.py Analy %s \'%s\' \'%s\'' % (os.getcwd(), os.getcwd(), opts.inputFile, opts.runAndLumis)], stdOutFile = 'cmsRun-stdout.log', stdInFile = 'cmsRun-stderr.log', jobId = opts.jobNumber, jobRetryCount = 0, invokeCmd = 'python')
+    jobExitCode, _, _, _ = executeCMSSWStack(taskName = 'Analysis', stepName = 'cmsRun', scramSetup = '', scramCommand = 'scramv1', scramProject = 'CMSSW', scramArch = opts.scramArch, cmsswVersion = opts.cmsswVersion, jobReportXML = 'FrameworkJobReport.xml', cmsswCommand = 'cmsRun', cmsswConfig = 'PSet.py', cmsswArguments = '', workDir = os.getcwd(), userTarball = opts.archiveJob, userFiles ='', preScripts = [], scramPreScripts = ['%s/TweakPSet.py Analy %s \'%s\' \'%s\' --oneEventMode=%s' % (os.getcwd(), os.getcwd(), opts.inputFile, opts.runAndLumis, opts.oneEventMode)], stdOutFile = 'cmsRun-stdout.log', stdInFile = 'cmsRun-stderr.log', jobId = opts.jobNumber, jobRetryCount = 0, invokeCmd = 'python')
 except WMExecutionFailure, WMex:
     print "caught WMExecutionFailure - code = %s - name = %s - detail = %s" % (WMex.code, WMex.name, WMex.detail)
     exmsg = WMex.name

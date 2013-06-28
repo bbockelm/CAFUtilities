@@ -16,7 +16,10 @@ parser = OptionParser()
 parser.add_option('--oneEventMode', dest='oneEventMode', default=False)
 opts, args = parser.parse_args()
 oneEventMode = opts.oneEventMode
-
+if opts.oneEventMode:
+    print "TweakPSet.py is going to force one event mode"
+else:
+    print "NO DICE %s %s" % (opts, args)
 location = sys.argv[2]
 inputFiles = literal_eval(sys.argv[3])
 runAndLumis = literal_eval(sys.argv[4])
