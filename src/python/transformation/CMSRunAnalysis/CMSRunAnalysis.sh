@@ -1,34 +1,43 @@
 #!/bin/bash
-
+set -x
 #touch Report.pkl
 
 # should be a bit nicer than before
-echo "Starting transformation..."
+echo "Starting CMSRunAnalysis.sh at $(date)..."
 
 ### source the CMSSW stuff using either OSG or LCG style entry env. variables
 ###    (incantations per oli's instructions)
 #   LCG style --
 if [ "x" != "x$VO_CMS_SW_DIR" ]
 then
-        echo 'LCG style'  
-	. $VO_CMS_SW_DIR/cmsset_default.sh
-        declare -a VERSIONS
-        VERSIONS=($(ls $VO_CMS_SW_DIR/$SCRAM_ARCH/external/python | grep 2.6))
-        PY_PATH=$VO_CMS_SW_DIR/$SCRAM_ARCH/external/python
-        echo 'python version: ' $VERSIONS
+    echo 'LCG style'
+    set +x
+    .  $VO_CMS_SW_DIR/cmsset_default.sh
+    set -x
+    declare -a VERSIONS
+    VERSIONS=($(ls $VO_CMS_SW_DIR/$SCRAM_ARCH/external/python | grep 2.6))
+    PY_PATH=$VO_CMS_SW_DIR/$SCRAM_ARCH/external/python
+    echo 'python version: ' $VERSIONS
 #   OSG style --
 elif [ "x" != "x$OSG_APP" ]
 then
-        echo 'OSG style'  
-	. $OSG_APP/cmssoft/cms/cmsset_default.sh CMSSW_3_3_2
-        declare -a VERSIONS
-        VERSIONS=($(ls $OSG_APP/cmssoft/cms/$SCRAM_ARCH/external/python | grep 2.6))
-        PY_PATH=$OSG_APP/cmssoft/cms/$SCRAM_ARCH/external/python 
-        echo 'python version: ' $VERSIONS
+    echo 'OSG style'  
+    set +x
+	. $OSG_APP/cmssoft/cms/cmsset_default.sh
+    set -x
+    declare -a VERSIONS
+    VERSIONS=($(ls $OSG_APP/cmssoft/cms/$SCRAM_ARCH/external/python | grep 2.6))
+    PY_PATH=$OSG_APP/cmssoft/cms/$SCRAM_ARCH/external/python 
+    echo 'python version: ' $VERSIONS
 elif [ -e /cvmfs/cms.cern.ch ]
 then
-        export VO_CMS_SW_DIR=/cvmfs/cms.cern.ch
-        . $VO_CMS_SW_DIR/cmsset_default.sh
+    export VO_CMS_SW_DIR=/cvmfs/cms.cern.ch
+    set +x
+    . $VO_CMS_SW_DIR/cmsset_default.sh
+    . /cvmfs/cms.cern.ch/slc5_amd64_gcc461/external/python/2.6.4-cms2/etc/profile.d/init.sh
+    set -x
+    #. /cvmfs/cms.cern.ch/COMP/slc5_amd64_gcc461/external/python/2.6.4-cms2/etc/profile.d/init.sh
+    #. /cvmfs/cms.cern.ch/COMP/slc5_amd64_gcc434/external/openssl/0.9.8e-comp2/etc/profile.d/init.sh
 else
 	echo "Error: neither OSG_APP, CVMFS, nor VO_CMS_SW_DIR environment variables were set" >&2
 	echo "Error: Because of this, we can't load CMSSW. Not good." >&2
@@ -39,14 +48,16 @@ echo "I think I found the correct CMSSW setup script"
 # check for Python2.6 installation 
 N_PYTHON26=${#VERSIONS[*]}
 if [ $N_PYTHON26 -lt 1 ]; then
-    echo "ERROR: No Python2.6 installed in COMP area. It is broken!"
-    exit 1
+    # The check later with command is sufficient
+    :
 else
     VERSION=${VERSIONS[0]}
     echo "Python 2.6 found in $PY_PATH/$VERSION";
     PYTHON26=$PY_PATH/$VERSION
     # Initialize CMS Python 2.6
+    set +x
     source $PY_PATH/$VERSION/etc/profile.d/init.sh
+    set -x
 fi
 
 command -v python2.6 > /dev/null
@@ -61,13 +72,30 @@ else
 	echo `which python2.6`
 fi
 
-wget http://common-analysis-framework.cern.ch/CMSRunAnaly.tgz
-tar xvfzm CMSRunAnaly.tgz
+echo "Current environment is"
+env
 
-export PYTHONPATH=`pwd`/WMCore.zip:$PYTHONPATH
-echo "Now running the job in `pwd`..."
-python2.6 CMSRunAnaly.py -r "`pwd`" "$@"
-jobrc=$?
+if [[ "X$CRAB_TASKMANAGER_TARBALL" == 'X' ]]; then
+    # Didn't ask to bring a tarball with us
+    wget http://common-analysis-framework.cern.ch/CMSRunAnaly.tgz
+    tar xvfzm CMSRunAnaly.tgz
+elif [[ $CRAB_TASKMANAGER_TARBALL == 'local' ]]; then
+    # Tarball was shipped with condor
+    tar xvzmf TaskManagerRun.tar.gz
+else
+    curl $CRAB_TASKMANAGER_TARBALL | tar xvzm
+fi
+export PYTHONPATH=`pwd`/CRAB3.zip:`pwd`/WMCore.zip:$PYTHONPATH
+ls
+echo "Now running the CMSRunAnalysis.py job in `pwd`..."
+# Fixing a poorly-chosen abbreviation
+if [[ -e CMSRunAnalysis.py ]]; then
+    python2.6 CMSRunAnalysis.py -r "`pwd`" "$@"
+    jobrc=$?
+else
+    python2.6 CMSRunAnaly.py -r "`pwd`" "$@"
+    jobrc=$?
+fi
 echo "The job had an exit code of $jobrc "
 exit $jobrc
 
