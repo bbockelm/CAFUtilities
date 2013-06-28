@@ -1,5 +1,6 @@
 import os
 import shutil
+import os.path
 import getopt
 import time
 import commands
@@ -9,6 +10,8 @@ import json
 import traceback
 import pickle
 from ast import literal_eval
+
+import WMCore.Storage.SiteLocalConfig as SiteLocalConfig
 
 EC_MissingArg  =        50113 #10 for ATLAS trf
 EC_CMSRunWrapper =      10040
@@ -80,6 +83,9 @@ parser.add_option('--runAndLumis',\
                   dest='runAndLumis',\
                   type='string',\
                   default='{}')
+parser.add_option('--oneEventMode',\
+                  dest='oneEventMode',\
+                  default=0)
 
 (opts, args) = parser.parse_args(sys.argv[1:])
 
@@ -94,83 +100,42 @@ try:
     print "inputFile      ", opts.inputFile
     print "outFiles:      ", opts.outFiles
     print "runAndLumis:   ", opts.runAndLumis
+    print "oneEventMode:  ", opts.oneEventMode
     print "==================="
 except:
     type, value, traceBack = sys.exc_info()
     print 'ERROR: missing parameters : %s - %s' % (type,value)
     handleException("FAILED", EC_MissingArg, 'CMSRunAnaly ERROR: missing parameters : %s - %s' % (type,value))
     sys.exit(EC_MissingArg)
-
-"""
-#removed -p parameter of generic transformation
-opts, args = getopt.getopt(sys.argv[1:], "a:o:r:", ["sourceURL=",
-    #paramters coming from -p:
-    "jobNumber=", "cmsswVersion=", "scramArch=", "inputFile=", "runAndLumis="
-])
-
-for o, a in opts:
-    if o == "-a":
-        archiveJob = a
-    if o == "-o":
-        outFiles = a
-    if o == "-r":
-        runDir = a
-    if o == "--sourceURL":
-        sourceURL = a
-    if o == "--jobNumber":
-        jobNumber = a
-    if o == "--cmsswVersion":
-        cmsswVersion = a
-    if o == "--scramArch":
-        scramArch = a
-    if o == "--inputFile":
-        inputFile = a
-    if o == "--runAndLumis":
-        runAndLumis = a
-
-try:
-    print "=== parameters ==="
-    print archiveJob
-    print runDir
-    print sourceURL
-    print jobNumber
-    print cmsswVersion
-    print scramArch
-    print inputFile
-    print runAndLumis
-    print outFiles
-    print "==================="
-except:
-    type, value, traceBack = sys.exc_info()
-    print 'ERROR: missing parameters : %s - %s' % (type,value)
-    handleException("FAILED", EC_MissingArg, 'CMSRunAnaly ERROR: missing parameters : %s - %s' % (type,value))
-    sys.exit(EC_MissingArg)
-"""
+    
 #clean workdir ?
 
 #wget sandnox
 if opts.archiveJob:
     os.environ['WMAGENTJOBDIR'] = os.getcwd()
-    print "--- wget for jobO ---"
-    output = commands.getoutput('wget -h')
-    wgetCommand = 'wget'
-    for line in output.split('\n'):
-        if re.search('--no-check-certificate',line) != None:
-            wgetCommand = 'wget --no-check-certificate'
-            break
-    com = '%s %s/cache/%s' % (wgetCommand, opts.sourceURL, opts.archiveJob)
-    nTry = 3
-    for iTry in range(nTry):
-        print 'Try : %s' % iTry
-        status,output = commands.getstatusoutput(com)
-        print output
-        if status == 0:
-            break
-        if iTry+1 == nTry:
-            print "ERROR : cound not get jobO files from panda server"
-            handleException("FAILED", EC_WGET, 'CMSRunAnaly ERROR: cound not get jobO files from panda server')
-            sys.exit(EC_WGET)
-        time.sleep(30)
+    if os.path.exists(archiveJob):
+        print "Sandbox %s already exists, skipping" % archiveJob
+    else:
+        print "--- wget for jobO ---"
+        output = commands.getoutput('wget -h')
+        wgetCommand = 'wget'
+        for line in output.split('\n'):
+            if re.search('--no-check-certificate',line) != None:
+                wgetCommand = 'wget --no-check-certificate'
+                break
+        com = '%s %s/cache/%s' % (wgetCommand, opts.sourceURL, opts.archiveJob)
+        nTry = 3
+        for iTry in range(nTry):
+            print 'Try : %s' % iTry
+            status,output = commands.getstatusoutput(com)
+            print output
+            if status == 0:
+                break
+            if iTry+1 == nTry:
+                print "ERROR : cound not get jobO files from panda server"
+                handleException("FAILED", EC_WGET, 'CMSRunAnaly ERROR: cound not get jobO files from panda server')
+                sys.exit(EC_WGET)
+            time.sleep(30)
     print commands.getoutput('tar xvfzm %s' % opts.archiveJob)
 
 #move the pset in the right place
@@ -237,6 +202,9 @@ try:
         report['exitAcronym'] = "OK"
         report['exitCode'] = 0
         report['exitMsg'] = "OK"
+
+    slc = SiteLocalConfig.loadSiteLocalConfig()
+    report['executed_site'] = slc.siteName
     with open('jobReport.json','w') as of:
         json.dump(report, of)
     with open('jobReportExtract.pickle','w') as of:
