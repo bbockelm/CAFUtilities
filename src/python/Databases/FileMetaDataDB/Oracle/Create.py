@@ -45,6 +45,7 @@ class Create(DBCreator):
               fmd_type VARCHAR(50) NOT NULL,
               fmd_parent CLOB,
               fmd_creation_time TIMESTAMP NOT NULL,
-              CONSTRAINT pk_tasklfn PRIMARY KEY(tm_taskname, fmd_lfn)
+              CONSTRAINT pk_tasklfn PRIMARY KEY(tm_taskname, fmd_lfn),
+              CONSTRAINT fk_tm_taskname FOREIGN KEY (tm_taskname) REFERENCES tasks (tm_taskname)
             )
         """
