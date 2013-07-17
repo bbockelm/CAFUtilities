@@ -439,6 +439,7 @@ def getPandIDsWithJobID(baseURLSSL, jobID, dn=None, nJobs=0, verbose=False, user
         LOGGER.error("ERROR getPandIDsWithJobID : %s %s" % (type, value))
     finally:
         # Always delete it!
+        os.close(filehandler)
         os.remove(proxyfile)
 
     if status is not None and status!=0:
