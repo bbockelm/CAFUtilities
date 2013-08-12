@@ -18,12 +18,6 @@ from TaskWorker.WorkerExceptions import PanDAException
 
 LOGGER = logging.getLogger(__name__)
 
-baseURL = 'http://pandaserver.cern.ch:25080/server/panda'
-baseURLSSL = 'https://pandaserver.cern.ch:25443/server/panda'
-
-baseURLCSRV    = "http://voatlas294.cern.ch:25080/server/panda"
-baseURLCSRVSSL = "https://voatlas294.cern.ch:25443/server/panda"
-
 # exit code
 EC_Failed = 255
 
@@ -236,7 +230,7 @@ class _Curl:
 
 
 # get site specs
-def getSiteSpecs(sslCert, sslKey, siteType=None):
+def getSiteSpecs(baseURL, sslCert, sslKey, siteType=None):
     # instantiate curl
     curl = _Curl()
     curl.sslCert = sslCert
@@ -257,7 +251,7 @@ def getSiteSpecs(sslCert, sslKey, siteType=None):
 
 
 # get cloud specs
-def getCloudSpecs(sslCert, sslKey):
+def getCloudSpecs(baseURL, sslCert, sslKey):
     # instantiate curl
     curl = _Curl()
     curl.sslCert = sslCert
@@ -274,19 +268,19 @@ def getCloudSpecs(sslCert, sslKey):
         return EC_Failed,output+'\n'+errStr
 
 # refresh specs
-def refreshSpecs(proxy):
+def refreshSpecs(baseURL, proxy):
     global PandaSites
     global PandaClouds
 
     sslCert = proxy
     sslKey  = proxy
     # get Panda Sites
-    tmpStat,PandaSites = getSiteSpecs(sslCert, sslKey)
+    tmpStat,PandaSites = getSiteSpecs(baseURL, sslCert, sslKey)
     if tmpStat != 0:
         LOGGER.error("ERROR : cannot get Panda Sites")
         sys.exit(EC_Failed)
     # get cloud info
-    tmpStat,PandaClouds = getCloudSpecs(sslCert, sslKey)
+    tmpStat,PandaClouds = getCloudSpecs(baseURL, sslCert, sslKey)
     if tmpStat != 0:
         LOGGER.error("ERROR : cannot get Panda Clouds")
         sys.exit(EC_Failed)
@@ -296,7 +290,7 @@ def getSite(sitename):
     return PandaSites[sitename]['cloud']
 
 # submit jobs
-def submitJobs(jobs, proxy, verbose=False):
+def submitJobs(baseURLSSL, jobs, proxy, verbose=False):
     # set hostname
     hostname = commands.getoutput('hostname')
     for job in jobs:
@@ -328,7 +322,7 @@ def submitJobs(jobs, proxy, verbose=False):
 
 
 # run brokerage
-def runBrokerage(sites, proxy,
+def runBrokerage(baseURLSSL, sites, proxy,
                  atlasRelease=None, cmtConfig=None, verbose=False, trustIS=False, cacheVer='',
                  processingType='', loggingFlag=False, memorySize=0, useDirectIO=False, siteGroup=None,
                  maxCpuCount=-1):
@@ -419,7 +413,7 @@ def runBrokerage(sites, proxy,
 # Only the following function -getPandIDsWithJobID- is directly called by the REST #
 ####################################################################################
 # get PandaIDs for a JobID
-def getPandIDsWithJobID(jobID, dn=None, nJobs=0, verbose=False, userproxy=None, credpath=None):
+def getPandIDsWithJobID(baseURLSSL, jobID, dn=None, nJobs=0, verbose=False, userproxy=None, credpath=None):
     # instantiate curl
     curl = _Curl()
     curl.verbose = verbose
@@ -446,6 +440,7 @@ def getPandIDsWithJobID(jobID, dn=None, nJobs=0, verbose=False, userproxy=None, 
         LOGGER.error("ERROR getPandIDsWithJobID : %s %s" % (type, value))
     finally:
         # Always delete it!
+        os.close(filehandler)
         os.remove(proxyfile)
 
     if status is not None and status!=0:
@@ -460,7 +455,7 @@ def getPandIDsWithJobID(jobID, dn=None, nJobs=0, verbose=False, userproxy=None, 
 
 
 # kill jobs
-def killJobs(ids, proxy, code=None, verbose=True, useMailAsID=False):
+def killJobs(baseURLSSL, ids, proxy, code=None, verbose=True, useMailAsID=False):
     # serialize
     strIDs = pickle.dumps(ids)
     # instantiate curl
@@ -481,7 +476,7 @@ def killJobs(ids, proxy, code=None, verbose=True, useMailAsID=False):
         return EC_Failed,output+'\n'+errStr
 
 # get full job status
-def getFullJobStatus(ids, proxy, verbose=False):
+def getFullJobStatus(baseURLSSL, ids, proxy, verbose=False):
     # serialize
     strIDs = pickle.dumps(ids)
     # instantiate curl
@@ -500,8 +495,7 @@ def getFullJobStatus(ids, proxy, verbose=False):
         LOGGER.error("ERROR getFullJobStatus : %s %s" % (type,value))
         LOGGER.error(str(traceBack))
 
-
-def putFile(file,verbose=False,useCacheSrv=False,reuseSandbox=False):
+def putFile(baseURLCSRVSSL, file, checksum, verbose=False, reuseSandbox=False):
     # size check for noBuild
     sizeLimit = 100*1024*1024
 
@@ -528,25 +522,22 @@ def putFile(file,verbose=False,useCacheSrv=False,reuseSandbox=False):
         checkSum,isize = struct.unpack("II",footer)
         # check duplication
         url = baseURLSSL + '/checkSandboxFile'
-        data = {'fileSize':fileSize,'checkSum':checkSum}
+        data = {'fileSize':fileSize,'checkSum':checksum}
         status,output = curl.post(url,data)
         if status != 0:
             raise PanDAException('ERROR: Could not check Sandbox duplication with %s' % status)
         elif output.startswith('FOUND:'):
             # found reusable sandbox
             hostName,reuseFileName = output.split(':')[1:]
-            # set cache server hostname
-            global baseURLCSRV
             baseURLCSRV    = "http://%s:25080/server/panda" % hostName
-            global baseURLCSRVSSL
             baseURLCSRVSSL = "https://%s:25443/server/panda" % hostName
             # return reusable filename
             return 0,"NewFileName:%s:%s" % (hostName, reuseFileName)
+#We should do something like this to determine the pandacache server to use
+#    url = baseURL + '/getServer'
+#    status, pandaCacheInstance = curl.put(url, {})
     # execute
-    if useCacheSrv:
-        url = baseURLCSRVSSL + '/putFile'
-    else:
-        url = baseURLSSL + '/putFile'
+    url = baseURLCSRVSSL + '/putFile'
     data = {'file':file}
     status, output = curl.put(url, data)
     filename = ""
