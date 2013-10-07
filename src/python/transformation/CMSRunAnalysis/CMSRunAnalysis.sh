@@ -83,6 +83,7 @@ elif [[ $CRAB_TASKMANAGER_TARBALL == 'local' ]]; then
     # Tarball was shipped with condor
     tar xvzmf TaskManagerRun.tar.gz
 else
+    # Allow user to override the choice
     curl $CRAB_TASKMANAGER_TARBALL | tar xvzm
 fi
 export PYTHONPATH=`pwd`/CRAB3.zip:`pwd`/WMCore.zip:$PYTHONPATH

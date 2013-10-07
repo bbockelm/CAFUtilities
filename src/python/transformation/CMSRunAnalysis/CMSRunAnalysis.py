@@ -105,7 +105,7 @@ try:
 except:
     type, value, traceBack = sys.exc_info()
     print 'ERROR: missing parameters : %s - %s' % (type,value)
-    handleException("FAILED", EC_MissingArg, 'CMSRunAnaly ERROR: missing parameters : %s - %s' % (type,value))
+    handleException("FAILED", EC_MissingArg, 'CMSRunAnalysisERROR: missing parameters : %s - %s' % (type,value))
     sys.exit(EC_MissingArg)
     
 #clean workdir ?
@@ -115,6 +115,10 @@ if opts.archiveJob:
     os.environ['WMAGENTJOBDIR'] = os.getcwd()
     if os.path.exists(opts.archiveJob):
         print "Sandbox %s already exists, skipping" % opts.archiveJob
+    elif opts.sourceURL == 'LOCAL' and not os.path.exists(opts.archiveJob):
+        print "ERROR: Requested for condor to transfer the tarball, but it didn't show up"
+        handleException("FAILED", EC_WGET, 'CMSRunAnalysisERROR: cound not get jobO files from panda server')
+        sys.exit(EC_WGET)
     else:
         print "--- wget for jobO ---"
         output = commands.getoutput('wget -h')
@@ -133,7 +137,7 @@ if opts.archiveJob:
                 break
             if iTry+1 == nTry:
                 print "ERROR : cound not get jobO files from panda server"
-                handleException("FAILED", EC_WGET, 'CMSRunAnaly ERROR: cound not get jobO files from panda server')
+                handleException("FAILED", EC_WGET, 'CMSRunAnalysisERROR: cound not get jobO files from panda server')
                 sys.exit(EC_WGET)
             time.sleep(30)
     print commands.getoutput('tar xvfzm %s' % opts.archiveJob)
